@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="service.skin.smartplaylist.widgets" name="Skin Widgets for SmartPlaylists" version="0.0.3" provider-name="kamisama91">
+<addon id="service.skin.smartplaylist.widgets" name="Skin Widgets for SmartPlaylists" version="0.0.4" provider-name="kamisama91">
     <requires>
         <import addon="xbmc.addon" version="12.0.0"/>
         <import addon="xbmc.json" version="6.0.0"/>

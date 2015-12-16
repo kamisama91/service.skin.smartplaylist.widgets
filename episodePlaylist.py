@@ -92,9 +92,9 @@ class EpisodePlaylist(Playlist):
         
     def _getSuggestedItems(self):
         playedTvShows = []
-        playedTvShowIds = set([item['tvshowid'] for item in self.Items if item['playcount']>0])        
+        playedTvShowIds = set([item['tvshowid'] for item in self.Items if item['playcount']>0])      
         for playedTvShowId in playedTvShowIds:
-            lastPlayed = max([item['lastplayed'] for item in self.Items if item['playcount']>0 and item['tvshowid']==playedTvShowId])
+            lastPlayed = max([item['lastplayed'] for item in self.Items if item['tvshowid']==playedTvShowId])
             playedTvShows.append({'tvshowid':playedTvShowId, 'lastplayed':lastPlayed})
         nextEpisodes = []
         playedTvShows = sorted(playedTvShows, key=lambda x: x['lastplayed'], reverse=True)
@@ -103,6 +103,11 @@ class EpisodePlaylist(Playlist):
             episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
             if len(episodes) > 0:
                 nextEpisodes.append(episodes[0])
+            elif __addon__.getSetting("ignore_specials") != 'true':
+                episodes = [item for item in self.Items if item['playcount']==0 and item['season']==0 and item['tvshowid']==playedTvShow['tvshowid']]
+                episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
+                if len(episodes) > 0:
+                    nextEpisodes.append(episodes[0])
         return nextEpisodes[:int(__addon__.getSetting("nb_item"))]
         
     def _setOnePlaylistItemsProperties(self, property, item):
