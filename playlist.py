@@ -1,22 +1,17 @@
 import time
+import os
 import xbmc
 import xbmcaddon
 import xbmcgui
+from xml.dom.minidom import parse
 
 __addon__        = xbmcaddon.Addon()
 __addonpath__    = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
 
 class Playlist():
 
-    def _logNotification(self, obj):
-        message = '%s (%s) : %s' % (self.Name, self.Type, obj)
-        file = open(__addonpath__ + "/notification.log", "a")
-        file.write(message + '\r\n')
-        file.close()
-    
     def _setProperty ( self, _property, _value ):
         xbmcgui.Window( 10000 ).setProperty ( _property, _value )
-        #self._logNotification('Set property: %s = %s' %(_property, _value.encode('ascii', 'ignore')))
     
     def __init__(self, alias, path, name, type):
         self.Path = path
@@ -41,6 +36,8 @@ class Playlist():
     def SetWatched(self, id):
         for item in [item for item in self.Items if item['id']==id]:
             item['playcount'] = 1
+            item['resume']['position'] = 0  #Flag as not started
+            item['lastplayed'] = time.strftime( "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))            
 
     def SetUnWatched(self, id):
         for item in [item for item in self.Items if item['id']==id]:
@@ -49,6 +46,14 @@ class Playlist():
     def StartPlaying(self, id):
         for item in [item for item in self.Items if item['id']==id]:
             item['lastplayed'] = time.strftime( "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+            item['resume']['position'] = 1  #Flag as started
+    
+    def GetPlaycountFromDatabase(self, id):
+        for item in [item for item in self.Items if item['id']==id]:
+            details = self._getDetails(id)
+            if details:
+                return details['playcount']
+        return 0
 
     def SetPlaylistProperties(self):
         self._setProperty("%s.Name"       %self.Alias, self.Name)
@@ -101,7 +106,51 @@ class Playlist():
         return None
                    
     def _fetchAllItems(self):
-        return None
+        return self._fetchFromPlaylist(self.Path)
     
     def _fetchOneItem(self, id):
+        details = self._getDetails(id)
+        if details:
+            fetchPlaylist = self._createFechOnePlaylist(id, details['file'])
+            result = self._fetchFromPlaylist(fetchPlaylist)
+            os.remove(xbmc.translatePath(fetchPlaylist))
+            for file in result:
+                if file['id'] == id:
+                    return file
         return None
+
+    def _getDetails(self, id):
+        return None
+    
+    def _fetchFromPlaylist(self, directory):
+        return None
+        
+    def _createFechOnePlaylist(self, fileId, fullpath):
+        filePath = os.path.split(fullpath)
+        # Load template
+        _templatepath = '%s/resources/playlists/fetchone.xsp' %(__addonpath__)
+        _template = parse(_templatepath)
+        # Set name
+        _searchPlaylistName = 'searchPlaylist'
+        if '{PLALIST_TYPE}' in _template.getElementsByTagName('smartplaylist')[0].attributes.item(0).value:
+            _template.getElementsByTagName('smartplaylist')[0].attributes.item(0).value = _template.getElementsByTagName('smartplaylist')[0].attributes.item(0).value.replace('{PLALIST_TYPE}', self.Type + 's')
+        for node in _template.getElementsByTagName('name'):
+            if '{PLAYLIST_NAME}' in node.firstChild.nodeValue:
+                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{PLAYLIST_NAME}', self.Name)
+            if '{FILE_ID}' in node.firstChild.nodeValue:
+                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{FILE_ID}', str(fileId))
+            _searchPlaylistName = node.firstChild.nodeValue
+        # Set source playlist
+        for node in _template.getElementsByTagName('value'):
+            if '{PLAYLIST_NAME}' in node.firstChild.nodeValue:
+                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{PLAYLIST_NAME}', self.Name)
+            if '{FILE_PATH}' in node.firstChild.nodeValue:
+                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{FILE_PATH}', filePath[0] + '/')
+            if '{FILE_NAME}' in node.firstChild.nodeValue:
+                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{FILE_NAME}', filePath[1])
+        # Save formatedPlaylist
+        _path = '%s%s.xsp' %(xbmc.translatePath('special://profile/playlists/video/'), _searchPlaylistName)
+        _file =  open(_path, 'wb')
+        _template.writexml(_file)
+        _file.close()
+        return _path.replace(xbmc.translatePath('special://profile/'), 'special://profile/').replace('\\', '/') 

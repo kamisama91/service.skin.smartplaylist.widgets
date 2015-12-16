@@ -1,6 +1,11 @@
+import sys
 import xbmc
 from xml.dom.minidom import parse
-
+if sys.version_info < (2, 7):
+    import simplejson
+else:
+    import json as simplejson
+    
 from playlist import Playlist
 from moviePlaylist import MoviePlaylist
 from episodePlaylist import EpisodePlaylist
@@ -65,6 +70,12 @@ class PlaylistCollection():
         for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
             playlist.StartPlaying(id)
             
+    def GetPlaycountFromDatabase(self, type, id):
+        playlists = [playlist for playlist in self.Playlists if playlist.Type == type]
+        if len(playlists) > 0:
+            return max([playlist.GetPlaycountFromDatabase(id) for playlist in playlists])        
+        return 0
+ 
     def RefreshAll(self, mode):
         for playlist in [playlist for playlist in self.Playlists]:
             self._refreshOne(playlist, mode)

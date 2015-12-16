@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-<smartplaylist type="movies">
-    <name>fetchOneMovie_{PLAYLIST_NAME}_{MOVIE_ID}</name>
-    <match>all</match>
-	<rule field="playlist" operator="is"><value>{PLAYLIST_NAME}</value></rule>
-	<rule field="title" operator="is"><value>{MOVIE_TITLE}</value></rule>
-</smartplaylist>

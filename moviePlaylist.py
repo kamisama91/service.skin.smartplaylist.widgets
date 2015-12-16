@@ -3,7 +3,6 @@ import sys
 import xbmc
 import xbmcaddon
 import random
-from xml.dom.minidom import parse
 if sys.version_info < (2, 7):
     import simplejson
 else:
@@ -19,13 +18,10 @@ class MoviePlaylist(Playlist):
 
     def __init__(self, alias, path, name):
         Playlist.__init__(self, alias, path, name, 'movie')
-        
-    def _fetchAllItems(self):
-        return self._fetchAllFromDirectory(self.Path)
-        
-    def _fetchAllFromDirectory(self, directory):
+
+    def _fetchFromPlaylist(self, directory):
         _result = []
-        _json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "video", "properties": ["title", "art", "dateadded", "playcount", "lastplayed"]}, "id": 1}' %(directory))
+        _json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "video", "properties": ["title", "art", "dateadded", "playcount", "lastplayed", "resume"]}, "id": 1}' %(directory))
         _json_query = unicode(_json_query, 'utf-8', errors='ignore')
         _json_set_response = simplejson.loads(_json_query)
         _files = _json_set_response.get( "result", {} ).get( "files" )
@@ -34,7 +30,7 @@ class MoviePlaylist(Playlist):
                 if xbmc.abortRequested:
                     break
                 if _file['filetype'] == 'directory':
-                    directoryFiles = self._fetchAllFromDirectory(_file['file'])
+                    directoryFiles = self._fetchFromPlaylist(_file['file'])
                     for directoryFile in directoryFiles:
                         id = directoryFile.get('id', -1)
                         if id != -1 and id not in [file['id'] for file in _result]:
@@ -44,46 +40,16 @@ class MoviePlaylist(Playlist):
                     if id != -1 and id not in [file['id'] for file in _result]:
                         _result.append(_file)
         return _result
-            
-    def _fetchOneItem(self, id):
-        _json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovieDetails", "params": {"properties": ["title"], "movieid":%s }, "id": 1}' %id)
+                
+    def _getDetails(self, id):
+        _json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovieDetails", "params": {"properties": ["file", "title", "playcount"], "movieid":%s }, "id": 1}' %id)
         _json_query = unicode(_json_query, 'utf-8', errors='ignore')
         _json_set_response = simplejson.loads(_json_query)
         details = _json_set_response.get( 'result', {} ).get( 'moviedetails', None )
         if details:
-            fetchPlaylist = self._createFechOnePlaylist(id, details['title'])
-            result = self._fetchAllFromDirectory(fetchPlaylist)
-            os.remove(xbmc.translatePath(fetchPlaylist))
-            for file in result:
-                if file['id'] == id:
-                    return file
-        return None
+            details['id'] = details['movieid']
+        return details
     
-    def _createFechOnePlaylist(self, id, title):
-        # Load template
-        _templatepath = '%s/resources/playlists/fetchonemovie.xsp' %(__addonpath__)
-        _template = parse(_templatepath)
-        # Set name
-        _searchPlylistName = 'searchPlaylist'
-        for node in _template.getElementsByTagName('name'):
-            if '{PLAYLIST_NAME}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{PLAYLIST_NAME}', self.Name)
-            if '{MOVIE_ID}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{MOVIE_ID}', '%s' %id)
-            _searchPlylistName = node.firstChild.nodeValue
-        # Set source playlist
-        for node in _template.getElementsByTagName('value'):
-            if '{PLAYLIST_NAME}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{PLAYLIST_NAME}', self.Name)
-            if '{MOVIE_TITLE}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{MOVIE_TITLE}', title)
-        # Save formatedPlaylist
-        _path = '%s%s.xsp' %(xbmc.translatePath('special://profile/playlists/video/'), _searchPlylistName)
-        _file =  open(_path, 'wb')
-        _template.writexml(_file)
-        _file.close()
-        return _path.replace(xbmc.translatePath('special://profile/'), 'special://profile/').replace('\\', '/') 
-
     def _getRandomItems(self):
         items = [item for item in self.Items if item['playcount']==0] if __addon__.getSetting("random_unplayed") == 'true' else [item for item in self.Items]
         random.shuffle(items)
@@ -96,7 +62,11 @@ class MoviePlaylist(Playlist):
         
     def _getSuggestedItems(self):
         items = [item for item in self.Items if item['playcount']==0]
-        items = sorted(items, key=lambda x: [x['lastplayed'],x['dateadded']], reverse=True)
+        startedItems = [item for item in items if item['resume']['position']>0]
+        startedItems = sorted(startedItems, key=lambda x: x['lastplayed'], reverse=True)
+        otherItems = [item for item in items if item not in startedItems]
+        otherItems = sorted(otherItems, key=lambda x: x['dateadded'], reverse=True)
+        items = startedItems + otherItems
         return items[:int(__addon__.getSetting("nb_item"))]
                 
     def _setOnePlaylistItemsProperties(self, property, item):

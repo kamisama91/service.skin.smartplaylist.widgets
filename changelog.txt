@@ -1,3 +1,7 @@
+v0.0.3
+- Handle VideoLibrary.OnUpdate (without playcount) and Player.OnStop system notifications
+- Suggested movies take care of resume->position and lastplayed properties
+
 v0.0.2
 - Select smart playlists from addon settings
 - Refresh items after a system notification

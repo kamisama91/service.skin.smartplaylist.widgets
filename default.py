@@ -31,6 +31,11 @@ def setProperty ( _property, _value ):
 def getProperty ( _property ):
     return xbmcgui.Window( 10000 ).getProperty ( _property )
 
+'''def logNotification(method, data):
+    message = 'Notify: %s -> %s' % (method, data)
+    file = open(__addonpath__ + "/notification.log", "a")
+    file.write(message + '\r\n')
+    file.close()'''
     
 class Main:
     def __init__(self):
@@ -82,6 +87,12 @@ class Main:
                 self.Playlists.RefreshByType(contentType, 'Recent')
                 if int(__addon__.getSetting("random_method")) == 1:
                     self.Playlists.RefreshByType(contentType, 'Random')
+            elif self.Playlists.GetPlaycountFromDatabase(contentType, contentId) > 0:
+                self.Playlists.SetWatched(contentType, contentId)
+                self.Playlists.RefreshByType(contentType, 'Suggested')
+                self.Playlists.RefreshByType(contentType, 'Recent')
+                if int(__addon__.getSetting("random_method")) == 1:
+                    self.Playlists.RefreshByType(contentType, 'Random')
         elif method == 'VideoLibrary.OnRemove':
             contentId = data['id']
             contentType = data['type']
@@ -95,8 +106,11 @@ class Main:
             contentType = data['item']['type']
             self.Playlists.StartPlaying(contentType, contentId)
         elif method == 'Player.OnStop':
+            contentType = data['item']['id']
             contentType = data['item']['type']
-            self.Playlists.RefreshByType(contentType, 'Suggested')  #Suggested may look at lastplayed
+            isEnded = data.get('end', False)
+            if isEnded == False:
+                self.Playlists.RefreshByType(contentType, 'Suggested')  #Suggested may look at lastplayed
             
     def _onSettingsChanged(self):
         configPlaylists = []
@@ -153,7 +167,8 @@ class Main:
         for item in configPlaylists:
             self.Playlists.Register(item['alias'], item['path'])
             self.Playlists.RefreshByAlias(item['alias'], 'All')
-            
+
+
 class Widgets_Monitor(xbmc.Monitor):
     def __init__(self, *args, **kwargs):
         self.onNotificationCallback = kwargs['onNotificationCallback']
