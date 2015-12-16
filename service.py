@@ -9,7 +9,6 @@ else:
 
 from playlistCollection import PlaylistCollection
     
-
 '''def logNotification(method, data):
     message = 'Notify: %s -> %s' % (method, data)
     file = open(xbmc.translatePath(xbmcaddon.Addon().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
@@ -19,11 +18,15 @@ from playlistCollection import PlaylistCollection
 def getProperty ( _property ):
     return xbmcgui.Window( 10000 ).getProperty ( _property )
     
+def setProperty ( _property, _value):
+    return xbmcgui.Window( 10000 ).setProperty ( _property, _value )
+    
 class Main:
     def __init__(self):
         self.Playlists = PlaylistCollection()
         self.Monitor = Widgets_Monitor(onNotificationCallback = self._onNotification, onSettingsChangedCallback = self._onSettingsChanged)
-        self._onSettingsChanged()       
+        setProperty('SkinWidgetsPlaylists_ReloadSettings', 'false')
+        self._onSettingsChanged()        
         self._daemon()
 
     def _daemon(self):
@@ -32,6 +35,9 @@ class Main:
         while (not xbmc.abortRequested):
             xbmc.sleep(500)
             addon = xbmcaddon.Addon()
+            if getProperty('SkinWidgetsPlaylists_ReloadSettings') == 'true' and addon.getSetting("autoselect_playlist") == 'true':
+                setProperty('SkinWidgetsPlaylists_ReloadSettings', 'false')
+                self._onSettingsChanged()
             if int(addon.getSetting("random_method")) == 0 :
                 # convert time to seconds, times 2 for 0,5 second sleep compensation
                 targetTimet = int(float(addon.getSetting("random_timer"))) * 60 * 2
@@ -127,8 +133,7 @@ class Main:
                 configPlaylists.append({'alias':'HomePlaylist12', 'path':addon.getSetting("HomePlaylist12")})
         self.Playlists.Update(configPlaylists)
 
-
-
+        
 class Widgets_Monitor(xbmc.Monitor):
     def __init__(self, *args, **kwargs):
         self.onNotificationCallback = kwargs['onNotificationCallback']
