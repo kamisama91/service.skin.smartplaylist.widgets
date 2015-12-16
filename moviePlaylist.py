@@ -78,26 +78,26 @@ class MoviePlaylist(Playlist):
             if '{MOVIE_TITLE}' in node.firstChild.nodeValue:
                 node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{MOVIE_TITLE}', title)
         # Save formatedPlaylist
-        _path = '%s%s.xsp' %(xbmc.translatePath('special://profile/playlists/video/SkinWidgetPlaylist/'), _searchPlylistName)
+        _path = '%s%s.xsp' %(xbmc.translatePath('special://profile/playlists/video/'), _searchPlylistName)
         _file =  open(_path, 'wb')
         _template.writexml(_file)
         _file.close()
         return _path.replace(xbmc.translatePath('special://profile/'), 'special://profile/').replace('\\', '/') 
 
     def _getRandomItems(self):
-        items = [item for item in self.Items if item['playcount']==0]
+        items = [item for item in self.Items if item['playcount']==0] if __addon__.getSetting("random_unplayed") == 'true' else [item for item in self.Items]
         random.shuffle(items)
-        return items[:5]
+        return items[:int(__addon__.getSetting("nb_item"))]
         
     def _getRecentItems(self):
-        items = [item for item in self.Items if item['playcount']==0]
+        items = [item for item in self.Items if item['playcount']==0] if __addon__.getSetting("recent_unplayed") == 'true' else [item for item in self.Items]
         items = sorted(items, key=lambda x: x['dateadded'], reverse=True)
-        return items[:5]
+        return items[:int(__addon__.getSetting("nb_item"))]
         
     def _getSuggestedItems(self):
         items = [item for item in self.Items if item['playcount']==0]
         items = sorted(items, key=lambda x: [x['lastplayed'],x['dateadded']], reverse=True)
-        return items[:5]
+        return items[:int(__addon__.getSetting("nb_item"))]
                 
     def _setOnePlaylistItemsProperties(self, property, item):
         if item:

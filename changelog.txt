@@ -1,2 +1,6 @@
+v0.0.2
+- Select smart playlists from addon settings
+- Refresh items after a system notification
+
 v0.0.1
-- Provide movies and episodes/tvshows SmartPlaylist Random/Recent/Suggested content (SmartPlaylist hardcoded)
+- Provide movies and episodes/tvshows SmartPlaylist Random/Recent/Suggested content (smart playlists hardcoded)

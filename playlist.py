@@ -1,3 +1,4 @@
+import time
 import xbmc
 import xbmcaddon
 import xbmcgui
@@ -22,38 +23,33 @@ class Playlist():
         self.Alias = alias
         self.Name = name
         self.Type = type
-        self.Items = []
-        self.WatchedItems = []        
+        self.Items = []  
         items = self._fetchAllItems()
         if items:
             self.Items = items
-            self.WatchedItems = [item['id'] for item in self.Items if item['playcount']>0]          
         
     def AddItem(self, id):
         if len([item for item in self.Items if item['id']==id]) == 0:
             item = self._fetchOneItem(id)
             if item:
-                self._logNotification('Added %s' %id)
                 self.Items.append(item)
         
     def RemoveItem(self, id):
-        items = [item for item in self.Items if item['id']==id]
-        for item in items:
-            self._logNotification('Removed %s' %id)
+        for item in [item for item in self.Items if item['id']==id]:
             self.Items.remove(item)
-        self.SetUnWatched(id)
                 
     def SetWatched(self, id):
-        if len([item for item in self.Items if item['id']==id]) > 0 and len([item for item in self.WatchedItems if item==id]) == 0:
-            self._logNotification('Watched %s' %id)
-            self.WatchedItems.append(id)
-            
+        for item in [item for item in self.Items if item['id']==id]:
+            item['playcount'] = 1
+
     def SetUnWatched(self, id):
-        watchedIds = [item for item in self.WatchedItems if item==id]
-        for watchedId in watchedIds:
-            self._logNotification('Unwatched %s' %id)
-            self.WatchedItems.remove(watchedId)
+        for item in [item for item in self.Items if item['id']==id]:
+            item['playcount'] = 0
     
+    def StartPlaying(self, id):
+        for item in [item for item in self.Items if item['id']==id]:
+            item['lastplayed'] = time.strftime( "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+
     def SetPlaylistProperties(self):
         self._setProperty("%s.Name"       %self.Alias, self.Name)
         self._setProperty("%s.Type"       %self.Alias, self.Type)
@@ -65,18 +61,18 @@ class Playlist():
         return len(self.Items)
         
     def _getWatchedItemCount(self):
-        return len(self.WatchedItems)
+        return len([item for item in self.Items if item['playcount']>0])
         
     def _getUnwatchedItemCount(self):
         return self._getItemCount() - self._getWatchedItemCount() 
 
     def RefreshItems(self, mode):
         items = None
-        if mode in ['Suggested', 'Recommended']:
+        if mode in ['Suggested'] and __addon__.getSetting("suggested_enable") == 'true':
             items = self._getSuggestedItems()
-        elif mode in ['Recent', 'Last']:
+        elif mode in ['Recent'] and __addon__.getSetting("recent_enable") == 'true':
             items = self._getRecentItems()
-        else:
+        elif mode in ['Random'] and __addon__.getSetting("random_enable") == 'true':
             items = self._getRandomItems()
         self._setAllPlaylistItemsProperties(mode, items)
              

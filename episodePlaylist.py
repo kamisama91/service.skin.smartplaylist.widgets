@@ -61,7 +61,7 @@ class EpisodePlaylist(Playlist):
 
     def _fetchAllFromTvShow(self, tvShowId):
         _result = []
-        _json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodes", "params": { "tvshowid": %s, "properties": ["title", "tvshowid", "showtitle", "season", "episode", "art", "dateadded", "playcount", "lastplayed"] }, "id": 1}' %(tvShowId))
+        _json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodes", "params": { "tvshowid": %s, "properties": ["file", "title", "tvshowid", "showtitle", "season", "episode", "art", "dateadded", "playcount", "lastplayed"] }, "id": 1}' %(tvShowId))
         _json_query = unicode(_json_query, 'utf-8', errors='ignore')
         _json_response = simplejson.loads(_json_query)
         _files = _json_response.get( "result", {} ).get( "episodes" )
@@ -110,21 +110,23 @@ class EpisodePlaylist(Playlist):
             if '{EPISODE_EPISODE}' in node.firstChild.nodeValue:
                 node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{EPISODE_EPISODE}', episode)
         # Save formatedPlaylist
-        _path = '%s%s.xsp' %(xbmc.translatePath('special://profile/playlists/video/SkinWidgetPlaylist/'), _searchPlylistName)
+        _path = '%s%s.xsp' %(xbmc.translatePath('special://profile/playlists/video/'), _searchPlylistName)
         _file =  open(_path, 'wb')
         _template.writexml(_file)
         _file.close()
         return _path.replace(xbmc.translatePath('special://profile/'), 'special://profile/').replace('\\', '/')
         
     def _getRandomItems(self):
-        items = [item for item in self.Items if item['playcount']==0 and item['season']>0]
+        items = [item for item in self.Items if item['season']>0] if __addon__.getSetting("ignore_specials") == 'true' else [item for item in self.Items]
+        items = [item for item in items if item['playcount']==0] if __addon__.getSetting("random_unplayed") == 'true' else [item for item in items]
         random.shuffle(items)
-        return items[:5]
+        return items[:int(__addon__.getSetting("nb_item"))]
         
     def _getRecentItems(self):
-        items = [item for item in self.Items if item['playcount']==0 and item['season']>0]
+        items = [item for item in self.Items if item['season']>0] if __addon__.getSetting("ignore_specials") == 'true' else [item for item in self.Items]
+        items = [item for item in items if item['playcount']==0] if __addon__.getSetting("recent_unplayed") == 'true' else [item for item in items]
         items = sorted(items, key=lambda x: x['dateadded'], reverse=True)
-        return items[:5]
+        return items[:int(__addon__.getSetting("nb_item"))]
         
     def _getSuggestedItems(self):
         playedTvShows = []
@@ -139,7 +141,7 @@ class EpisodePlaylist(Playlist):
             episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
             if len(episodes) > 0:
                 nextEpisodes.append(episodes[0])
-        return nextEpisodes[:5]
+        return nextEpisodes[:int(__addon__.getSetting("nb_item"))]
         
     def _setOnePlaylistItemsProperties(self, property, item):
         if item:

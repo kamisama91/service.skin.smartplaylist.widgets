@@ -40,22 +40,47 @@ class PlaylistCollection():
         if playlist:
             self.Playlists.append(playlist)
             playlist.SetPlaylistProperties()
-            playlist.RefreshItems('Random')
-            playlist.RefreshItems('Recent')
-            playlist.RefreshItems('Suggested')
 
     def AddItem(self, type, id):
         for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
             playlist.AddItem(id)
+            playlist.SetPlaylistProperties()
         
     def RemoveItem(self, type, id):
         for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
             playlist.RemoveItem(id)
+            playlist.SetPlaylistProperties()
                 
     def SetWatched(self, type, id):
         for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
             playlist.SetWatched(id)
+            playlist.SetPlaylistProperties()
             
     def SetUnwatched(self, type, id):
         for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
             playlist.SetUnWatched(id)
+            playlist.SetPlaylistProperties()            
+    
+    def StartPlaying(self, type, id):
+        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
+            playlist.StartPlaying(id)
+            
+    def RefreshAll(self, mode):
+        for playlist in [playlist for playlist in self.Playlists]:
+            self._refreshOne(playlist, mode)
+        
+    def RefreshByType(self, type, mode):
+        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
+            self._refreshOne(playlist, mode)
+            
+    def RefreshByAlias(self, alias, mode):
+        for playlist in [playlist for playlist in self.Playlists if playlist.Alias == alias]:
+            self._refreshOne(playlist, mode)
+
+    def _refreshOne(self, playlist, mode):
+        if mode in ['All', 'Suggested']:
+            playlist.RefreshItems('Suggested')
+        if mode in ['All', 'Recent']:
+            playlist.RefreshItems('Recent')
+        if mode in ['All', 'Random']:
+            playlist.RefreshItems('Random')
