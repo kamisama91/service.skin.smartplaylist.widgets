@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<smartplaylist type="episodes">
+    <name>fetchOneEpisode_{PLAYLIST_NAME}_{EPISODE_ID}</name>
+    <match>all</match>
+	<rule field="playlist" operator="is"><value>{PLAYLIST_NAME}</value></rule>
+	<rule field="tvshow" operator="is"><value>{EPISODE_TVSHOW}</value></rule>
+	<rule field="season" operator="is"><value>{EPISODE_SEASON}</value></rule>
+	<rule field="episode" operator="is"><value>{EPISODE_EPISODE}</value></rule>
+</smartplaylist>
