@@ -10,19 +10,33 @@ else:
     
 from playlist import Playlist
 
-__addon__        = xbmcaddon.Addon()
-__addonpath__    = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
-
-
 class EpisodePlaylist(Playlist):
     
     def __init__(self, alias, path, name):
         Playlist.__init__(self, alias, path, name, 'episode')
         
-    def SetPlaylistProperties(self):
-        Playlist.SetPlaylistProperties(self)
+    def _setPlaylistProperties(self):
+        Playlist._setPlaylistProperties(self)
         self._setProperty("%s.TvShows" %self.Alias, str(self._getTvShowCount()))
     
+    def _setOnePlaylistItemsProperties(self, property, item):
+        Playlist._setOnePlaylistItemsProperties(self, property, item)
+        if item:
+            self._setProperty("%s.EpisodeNo"    % property, "S%.2dE%.2d" %(float(item.get('season')), float(item.get('episode'))))
+            self._setProperty("%s.TVshowTitle"  % property, item.get('showtitle'))
+            self._setProperty("%s.Art(thumb)"   % property, item['art'].get('thumb',''))
+            self._setProperty("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
+   
+    def _clearPlaylistProperties(self):
+        Playlist._clearPlaylistProperties(self)
+        for property in ['Name', 'Type', 'Count', 'Watched', 'Unwatched']:
+            self._clearProperty('%s.%s' %(self.Alias, property))
+        
+    def ClearOnePlaylistItemsProperties(self, property):
+        Playlist.ClearOnePlaylistItemsProperties(self, property)
+        for item in ['EpisodeNo', 'TVshowTitle', 'Art(thumb)', 'Art(fanart)']:
+            self._clearProperty('%s.%s' %(property, item)) 
+                
     def _getTvShowCount(self):
         showIds = set([item['tvshowid'] for item in self.Items])
         return len(showIds)
@@ -79,18 +93,21 @@ class EpisodePlaylist(Playlist):
         return details
         
     def _getRandomItems(self):
-        items = [item for item in self.Items if item['season']>0] if __addon__.getSetting("ignore_specials") == 'true' else [item for item in self.Items]
-        items = [item for item in items if item['playcount']==0] if __addon__.getSetting("random_unplayed") == 'true' else [item for item in items]
+        addon = xbmcaddon.Addon()
+        items = [item for item in self.Items if item['season']>0] if addon.getSetting("ignore_specials") == 'true' else [item for item in self.Items]
+        items = [item for item in items if item['playcount']==0] if addon.getSetting("random_unplayed") == 'true' else [item for item in items]
         random.shuffle(items)
-        return items[:int(__addon__.getSetting("nb_item"))]
+        return items[:int(addon.getSetting("nb_item"))]
         
     def _getRecentItems(self):
-        items = [item for item in self.Items if item['season']>0] if __addon__.getSetting("ignore_specials") == 'true' else [item for item in self.Items]
-        items = [item for item in items if item['playcount']==0] if __addon__.getSetting("recent_unplayed") == 'true' else [item for item in items]
+        addon = xbmcaddon.Addon()
+        items = [item for item in self.Items if item['season']>0] if addon.getSetting("ignore_specials") == 'true' else [item for item in self.Items]
+        items = [item for item in items if item['playcount']==0] if addon.getSetting("recent_unplayed") == 'true' else [item for item in items]
         items = sorted(items, key=lambda x: x['dateadded'], reverse=True)
-        return items[:int(__addon__.getSetting("nb_item"))]
+        return items[:int(addon.getSetting("nb_item"))]
         
     def _getSuggestedItems(self):
+        addon = xbmcaddon.Addon()
         playedTvShows = []
         playedTvShowIds = set([item['tvshowid'] for item in self.Items if item['playcount']>0])      
         for playedTvShowId in playedTvShowIds:
@@ -103,21 +120,10 @@ class EpisodePlaylist(Playlist):
             episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
             if len(episodes) > 0:
                 nextEpisodes.append(episodes[0])
-            elif __addon__.getSetting("ignore_specials") != 'true':
+            elif addon.getSetting("ignore_specials") != 'true':
                 episodes = [item for item in self.Items if item['playcount']==0 and item['season']==0 and item['tvshowid']==playedTvShow['tvshowid']]
                 episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
                 if len(episodes) > 0:
                     nextEpisodes.append(episodes[0])
-        return nextEpisodes[:int(__addon__.getSetting("nb_item"))]
+        return nextEpisodes[:int(addon.getSetting("nb_item"))]
         
-    def _setOnePlaylistItemsProperties(self, property, item):
-        if item:
-            self._setProperty("%s.DBID"         % property, str(item.get('id')))
-            self._setProperty("%s.Title"        % property, item.get('title'))
-            self._setProperty("%s.EpisodeNo"    % property, "S%.2dE%.2d" %(float(item.get('season')), float(item.get('episode'))))
-            self._setProperty("%s.TVshowTitle"  % property, item.get('showtitle'))
-            self._setProperty("%s.Art(thumb)"   % property, item['art'].get('thumb',''))
-            self._setProperty("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
-            self._setProperty("%s.File"         % property, item.get('file',''))
-        else:
-            self._setProperty("%s.Title"        % property, '')

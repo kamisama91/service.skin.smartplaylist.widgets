@@ -1,3 +1,6 @@
+v0.0.5
+- Refresh items after addon settings update
+
 v0.0.4
 - Suggested episodes take care of lastplayed properties and ignore_specials setting
 

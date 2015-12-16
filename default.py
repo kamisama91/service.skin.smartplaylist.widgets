@@ -1,12 +1,7 @@
-import os
 import sys
 import xbmc
 import xbmcgui
 import xbmcaddon
-import random
-import datetime
-import _strptime
-import urllib
 if sys.version_info < (2, 7):
     import simplejson
 else:
@@ -14,28 +9,15 @@ else:
 
 from playlistCollection import PlaylistCollection
     
-__addon__        = xbmcaddon.Addon()
-__addonversion__ = __addon__.getAddonInfo('version')
-__addonid__      = __addon__.getAddonInfo('id')
-__addonname__    = __addon__.getAddonInfo('name')
-__localize__     = __addon__.getLocalizedString
-__addonpath__    = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
-
-def log(txt):
-    message = '%s: %s' % (__addonname__, txt.encode('ascii', 'ignore'))
-    xbmc.log(msg=message, level=xbmc.LOGDEBUG)
-        
-def setProperty ( _property, _value ):
-    xbmcgui.Window( 10000 ).setProperty ( _property, _value )
-        
-def getProperty ( _property ):
-    return xbmcgui.Window( 10000 ).getProperty ( _property )
 
 '''def logNotification(method, data):
     message = 'Notify: %s -> %s' % (method, data)
-    file = open(__addonpath__ + "/notification.log", "a")
+    file = open(xbmc.translatePath(xbmcaddon.Addon().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
     file.write(message + '\r\n')
     file.close()'''
+    
+def getProperty ( _property ):
+    return xbmcgui.Window( 10000 ).getProperty ( _property )
     
 class Main:
     def __init__(self):
@@ -49,16 +31,17 @@ class Main:
         timer = 0
         while (not xbmc.abortRequested):
             xbmc.sleep(500)
-            if int(__addon__.getSetting("random_method")) == 0 :
+            addon = xbmcaddon.Addon()
+            if int(addon.getSetting("random_method")) == 0 :
                 # convert time to seconds, times 2 for 0,5 second sleep compensation
-                targetTimet = int(float(__addon__.getSetting("random_timer"))) * 60 * 2
+                targetTimet = int(float(addon.getSetting("random_timer"))) * 60 * 2
                 timer += 1
                 if timer == targetTimet:
-                    self.Playlists.RefreshAll('Random')
+                    self.Playlists.UpdateAllPlaylists(['Random'])
                     timer = 0    # reset counter
-            if int(__addon__.getSetting("random_method")) == 2 :
+            if int(addon.getSetting("random_method")) == 2 :
                 if  home_update and xbmcgui.getCurrentWindowId() == 10000:
-                    self.Playlists.RefreshAll('Random')
+                    self.Playlists.UpdateAllPlaylists(['Random'])
                     home_update = False
                 elif not home_update and xbmcgui.getCurrentWindowId() != 10000:
                     home_update = True
@@ -71,50 +54,28 @@ class Main:
             transaction = data.get('transaction', False)
             if transaction == True:
                 self.Playlists.AddItem(contentType, contentId)
-                self.Playlists.RefreshByType(contentType, 'Suggested')
-                self.Playlists.RefreshByType(contentType, 'Recent')
-                if int(__addon__.getSetting("random_method")) == 1:
-                    self.Playlists.RefreshByType(contentType, 'Random')
             elif playcount == 0:
                 self.Playlists.SetUnwatched(contentType, contentId)
-                self.Playlists.RefreshByType(contentType, 'Suggested')
-                self.Playlists.RefreshByType(contentType, 'Recent')
-                if int(__addon__.getSetting("random_method")) == 1:
-                    self.Playlists.RefreshByType(contentType, 'Random')
-            elif playcount > 0:
+            elif playcount > 0 or self.Playlists.GetPlaycountFromDatabase(contentType, contentId) > 0:
                 self.Playlists.SetWatched(contentType, contentId)
-                self.Playlists.RefreshByType(contentType, 'Suggested')
-                self.Playlists.RefreshByType(contentType, 'Recent')
-                if int(__addon__.getSetting("random_method")) == 1:
-                    self.Playlists.RefreshByType(contentType, 'Random')
-            elif self.Playlists.GetPlaycountFromDatabase(contentType, contentId) > 0:
-                self.Playlists.SetWatched(contentType, contentId)
-                self.Playlists.RefreshByType(contentType, 'Suggested')
-                self.Playlists.RefreshByType(contentType, 'Recent')
-                if int(__addon__.getSetting("random_method")) == 1:
-                    self.Playlists.RefreshByType(contentType, 'Random')
         elif method == 'VideoLibrary.OnRemove':
             contentId = data['id']
             contentType = data['type']
             self.Playlists.RemoveItem(contentType, contentId)
-            self.Playlists.RefreshByType(contentType, 'Suggested')
-            self.Playlists.RefreshByType(contentType, 'Recent')
-            if int(__addon__.getSetting("random_method")) == 1:
-                self.Playlists.RefreshByType(contentType, 'Random')
         elif method == 'Player.OnPlay':
             contentId = data['item']['id']
             contentType = data['item']['type']
             self.Playlists.StartPlaying(contentType, contentId)
         elif method == 'Player.OnStop':
-            contentType = data['item']['id']
+            contentId = data['item']['id']
             contentType = data['item']['type']
             isEnded = data.get('end', False)
-            if isEnded == False:
-                self.Playlists.RefreshByType(contentType, 'Suggested')  #Suggested may look at lastplayed
+            self.Playlists.StopPlaying(contentType, contentId, isEnded)
             
     def _onSettingsChanged(self):
+        addon = xbmcaddon.Addon()
         configPlaylists = []
-        if __addon__.getSetting("autoselect_playlist") == 'true':
+        if addon.getSetting("autoselect_playlist") == 'true':
             if getProperty("SkinWidgetPlaylists.HomePlaylist1") != '':
                 configPlaylists.append({'alias':'HomePlaylist1', 'path':getProperty("SkinWidgetPlaylists.HomePlaylist1")})
             if getProperty("SkinWidgetPlaylists.HomePlaylist2") != '':
@@ -140,33 +101,32 @@ class Main:
             if getProperty("SkinWidgetPlaylists.HomePlaylist12") != '':
                 configPlaylists.append({'alias':'HomePlaylist12', 'path':getProperty("SkinWidgetPlaylists.HomePlaylist12")})
         else:
-            if __addon__.getSetting("HomePlaylist1") != '':
-                configPlaylists.append({'alias':'HomePlaylist1', 'path':__addon__.getSetting("HomePlaylist1")})
-            if __addon__.getSetting("HomePlaylist2") != '':
-                configPlaylists.append({'alias':'HomePlaylist2', 'path':__addon__.getSetting("HomePlaylist2")})
-            if __addon__.getSetting("HomePlaylist3") != '':
-                configPlaylists.append({'alias':'HomePlaylist3', 'path':__addon__.getSetting("HomePlaylist3")})
-            if __addon__.getSetting("HomePlaylist4") != '':
-                configPlaylists.append({'alias':'HomePlaylist4', 'path':__addon__.getSetting("HomePlaylist4")})
-            if __addon__.getSetting("HomePlaylist5") != '':
-                configPlaylists.append({'alias':'HomePlaylist5', 'path':__addon__.getSetting("HomePlaylist5")})  
-            if __addon__.getSetting("HomePlaylist6") != '':
-                configPlaylists.append({'alias':'HomePlaylist6', 'path':__addon__.getSetting("HomePlaylist6")})
-            if __addon__.getSetting("HomePlaylist7") != '':
-                configPlaylists.append({'alias':'HomePlaylist7', 'path':__addon__.getSetting("HomePlaylist7")})
-            if __addon__.getSetting("HomePlaylist8") != '':
-                configPlaylists.append({'alias':'HomePlaylist8', 'path':__addon__.getSetting("HomePlaylist8")})
-            if __addon__.getSetting("HomePlaylist9") != '':
-                configPlaylists.append({'alias':'HomePlaylist9', 'path':__addon__.getSetting("HomePlaylist9")})
-            if __addon__.getSetting("HomePlaylist10") != '':
-                configPlaylists.append({'alias':'HomePlaylist10', 'path':__addon__.getSetting("HomePlaylist10")})
-            if __addon__.getSetting("HomePlaylist11") != '':
-                configPlaylists.append({'alias':'HomePlaylist11', 'path':__addon__.getSetting("HomePlaylist11")})
-            if __addon__.getSetting("HomePlaylist12") != '':
-                configPlaylists.append({'alias':'HomePlaylist12', 'path':__addon__.getSetting("HomePlaylist12")})
-        for item in configPlaylists:
-            self.Playlists.Register(item['alias'], item['path'])
-            self.Playlists.RefreshByAlias(item['alias'], 'All')
+            if addon.getSetting("HomePlaylist1") != '':
+                configPlaylists.append({'alias':'HomePlaylist1', 'path':addon.getSetting("HomePlaylist1")})
+            if addon.getSetting("HomePlaylist2") != '':
+                configPlaylists.append({'alias':'HomePlaylist2', 'path':addon.getSetting("HomePlaylist2")})
+            if addon.getSetting("HomePlaylist3") != '':
+                configPlaylists.append({'alias':'HomePlaylist3', 'path':addon.getSetting("HomePlaylist3")})
+            if addon.getSetting("HomePlaylist4") != '':
+                configPlaylists.append({'alias':'HomePlaylist4', 'path':addon.getSetting("HomePlaylist4")})
+            if addon.getSetting("HomePlaylist5") != '':
+                configPlaylists.append({'alias':'HomePlaylist5', 'path':addon.getSetting("HomePlaylist5")})  
+            if addon.getSetting("HomePlaylist6") != '':
+                configPlaylists.append({'alias':'HomePlaylist6', 'path':addon.getSetting("HomePlaylist6")})
+            if addon.getSetting("HomePlaylist7") != '':
+                configPlaylists.append({'alias':'HomePlaylist7', 'path':addon.getSetting("HomePlaylist7")})
+            if addon.getSetting("HomePlaylist8") != '':
+                configPlaylists.append({'alias':'HomePlaylist8', 'path':addon.getSetting("HomePlaylist8")})
+            if addon.getSetting("HomePlaylist9") != '':
+                configPlaylists.append({'alias':'HomePlaylist9', 'path':addon.getSetting("HomePlaylist9")})
+            if addon.getSetting("HomePlaylist10") != '':
+                configPlaylists.append({'alias':'HomePlaylist10', 'path':addon.getSetting("HomePlaylist10")})
+            if addon.getSetting("HomePlaylist11") != '':
+                configPlaylists.append({'alias':'HomePlaylist11', 'path':addon.getSetting("HomePlaylist11")})
+            if addon.getSetting("HomePlaylist12") != '':
+                configPlaylists.append({'alias':'HomePlaylist12', 'path':addon.getSetting("HomePlaylist12")})
+        self.Playlists.Update(configPlaylists)
+
 
 
 class Widgets_Monitor(xbmc.Monitor):

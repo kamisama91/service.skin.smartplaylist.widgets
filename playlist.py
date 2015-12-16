@@ -5,49 +5,67 @@ import xbmcaddon
 import xbmcgui
 from xml.dom.minidom import parse
 
-__addon__        = xbmcaddon.Addon()
-__addonpath__    = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
+MAX_ITEM = 20
 
 class Playlist():
-
+        
     def _setProperty ( self, _property, _value ):
-        xbmcgui.Window( 10000 ).setProperty ( _property, _value )
+        xbmcgui.Window( 10000 ).setProperty(_property, _value)
     
+    def _clearProperty(self, _property):
+        xbmcgui.Window( 10000 ).clearProperty(_property)
+ 
+ 
     def __init__(self, alias, path, name, type):
-        self.Path = path
-        self.Alias = alias
+        self.Alias = None
+        self.Path = path        
         self.Name = name
         self.Type = type
-        self.Items = []  
-        items = self._fetchAllItems()
-        if items:
-            self.Items = items
-        
+        self.Items = self._fetchAllItems()
+        self.SetAlias(alias)
+            
+    def SetAlias(self, alias):
+        if self.Alias != alias:
+            if self.Alias:
+                self.Clean()
+            self.Alias = alias
+        if self.Alias:
+            self.Update(['Suggested', 'Recent', 'Random'])
+
+            
     def AddItem(self, id):
         if len([item for item in self.Items if item['id']==id]) == 0:
             item = self._fetchOneItem(id)
             if item:
                 self.Items.append(item)
+                self.Update(['Suggested', 'Recent', 'Random'] if int(xbmcaddon.Addon().getSetting("random_method")) == 1 else ['Suggested', 'Recent'])
         
     def RemoveItem(self, id):
         for item in [item for item in self.Items if item['id']==id]:
             self.Items.remove(item)
+            self.Update(['Suggested', 'Recent', 'Random'] if int(xbmcaddon.Addon().getSetting("random_method")) == 1 else ['Suggested', 'Recent'])
                 
     def SetWatched(self, id):
-        for item in [item for item in self.Items if item['id']==id]:
+        for item in [item for item in self.Items if item['id']==id and item['playcount']==0]:
             item['playcount'] = 1
             item['resume']['position'] = 0  #Flag as not started
-            item['lastplayed'] = time.strftime( "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))            
-
+            item['lastplayed'] = time.strftime( "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+            self.Update(['Suggested', 'Recent', 'Random'] if int(xbmcaddon.Addon().getSetting("random_method")) == 1 else ['Suggested', 'Recent'])
+                
     def SetUnWatched(self, id):
-        for item in [item for item in self.Items if item['id']==id]:
+        for item in [item for item in self.Items if item['id']==id and item['playcount']>0]:
             item['playcount'] = 0
-    
+            self.Update(['Suggested', 'Recent', 'Random'] if int(xbmcaddon.Addon().getSetting("random_method")) == 1 else ['Suggested', 'Recent'])
+                
     def StartPlaying(self, id):
         for item in [item for item in self.Items if item['id']==id]:
             item['lastplayed'] = time.strftime( "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
             item['resume']['position'] = 1  #Flag as started
     
+    def StopPlaying(self, id, isEnded):
+        if isEnded == False:
+            self.Update(['Suggested']) #Suggested depend on lastplayed/resume.position set when StartPlaying
+            
     def GetPlaycountFromDatabase(self, id):
         for item in [item for item in self.Items if item['id']==id]:
             details = self._getDetails(id)
@@ -55,7 +73,20 @@ class Playlist():
                 return details['playcount']
         return 0
 
-    def SetPlaylistProperties(self):
+ 
+    def Update(self, modes):
+        self._setPlaylistProperties()
+        for mode in modes:
+            items = None
+            if mode =='Suggested' and xbmcaddon.Addon().getSetting("suggested_enable") == 'true':
+                items = self._getSuggestedItems()
+            elif mode == 'Recent' and xbmcaddon.Addon().getSetting("recent_enable") == 'true':
+                items = self._getRecentItems()
+            elif mode == 'Random' and xbmcaddon.Addon().getSetting("random_enable") == 'true':
+                items = self._getRandomItems()
+            self._setAllPlaylistItemsProperties(mode, items)
+
+    def _setPlaylistProperties(self):
         self._setProperty("%s.Name"       %self.Alias, self.Name)
         self._setProperty("%s.Type"       %self.Alias, self.Type)
         self._setProperty("%s.Count"      %self.Alias, str(self._getItemCount()))
@@ -70,17 +101,7 @@ class Playlist():
         
     def _getUnwatchedItemCount(self):
         return self._getItemCount() - self._getWatchedItemCount() 
-
-    def RefreshItems(self, mode):
-        items = None
-        if mode in ['Suggested'] and __addon__.getSetting("suggested_enable") == 'true':
-            items = self._getSuggestedItems()
-        elif mode in ['Recent'] and __addon__.getSetting("recent_enable") == 'true':
-            items = self._getRecentItems()
-        elif mode in ['Random'] and __addon__.getSetting("random_enable") == 'true':
-            items = self._getRandomItems()
-        self._setAllPlaylistItemsProperties(mode, items)
-             
+        
     def _getRandomItems(self):
         return None
         
@@ -89,7 +110,7 @@ class Playlist():
         
     def _getSuggestedItems(self):
         return None
-
+        
     def _setAllPlaylistItemsProperties(self, mode, items):
         count = 1
         if items:
@@ -97,16 +118,47 @@ class Playlist():
                 property = '%s#%s.%s' %(self.Alias, mode, count)
                 self._setOnePlaylistItemsProperties(property, item)
                 count = count + 1
-        while count <= 20:
+        while count <= MAX_ITEM:
             property = '%s#%s.%s' %(self.Alias, mode, count)
             self._setOnePlaylistItemsProperties(property, None)
             count += 1
             
     def _setOnePlaylistItemsProperties(self, property, item):
-        return None
-                   
+        if item:
+            self._setProperty("%s.DBID"         % property, str(item.get('id')))
+            self._setProperty("%s.Title"        % property, item.get('title'))
+            self._setProperty("%s.File"         % property, item.get('file',''))
+        else:
+            self._setProperty("%s.Title"        % property, '')
+
+
+    def Clean(self):
+        self._clearPlaylistProperties()
+        for mode in ['Random', 'Recent', 'Suggested']:
+            self._clearAllPlaylistItemsProperties(mode)
+        
+    def _clearPlaylistProperties(self):
+        for property in ['Name', 'Type', 'Count', 'Watched', 'Unwatched']:
+            self._clearProperty('%s.%s' %(self.Alias, property))
+        
+    def _clearAllPlaylistItemsProperties(self, mode):        
+        for mode in ['Random', 'Recent', 'Suggested']:
+            count = 1
+            while count <= MAX_ITEM:
+                property = '%s#%s.%s' %(self.Alias, mode, count)
+                self._clearOnePlaylistItemsProperties(property)
+                count += 1
+    
+    def _clearOnePlaylistItemsProperties(self, property):
+        for item in ['DBID', 'Title', 'File']:
+            self._clearProperty('%s.%s' %(property, item))
+
+
     def _fetchAllItems(self):
         return self._fetchFromPlaylist(self.Path)
+    
+    def _fetchFromPlaylist(self, directory):
+        return None
     
     def _fetchOneItem(self, id):
         details = self._getDetails(id)
@@ -121,14 +173,11 @@ class Playlist():
 
     def _getDetails(self, id):
         return None
-    
-    def _fetchFromPlaylist(self, directory):
-        return None
-        
+  
     def _createFechOnePlaylist(self, fileId, fullpath):
         filePath = os.path.split(fullpath)
         # Load template
-        _templatepath = '%s/resources/playlists/fetchone.xsp' %(__addonpath__)
+        _templatepath = '%s/resources/playlists/fetchone.xsp' %(xbmc.translatePath(xbmcaddon.Addon().getAddonInfo('path')).decode('utf-8'))
         _template = parse(_templatepath)
         # Set name
         _searchPlaylistName = 'searchPlaylist'
