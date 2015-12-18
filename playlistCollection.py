@@ -2,6 +2,8 @@ import helper
 import moviePlaylist as mpl
 import episodePlaylist as epl
 
+MAX_PLAYLIST = 12
+
 class PlaylistCollection():
     def __init__(self):
         self.Playlists = []
@@ -36,56 +38,13 @@ class PlaylistCollection():
 
     def Update(self, settings):
         configPlaylists = []
-        if settings.getSetting("autoselect_playlist") == 'true':
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist1") != '':
-                configPlaylists.append({'alias':'HomePlaylist1', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist1")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist2") != '':
-                configPlaylists.append({'alias':'HomePlaylist2', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist2")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist3") != '':
-                configPlaylists.append({'alias':'HomePlaylist3', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist3")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist4") != '':
-                configPlaylists.append({'alias':'HomePlaylist4', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist4")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist5") != '':
-                configPlaylists.append({'alias':'HomePlaylist5', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist5")})  
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist6") != '':
-                configPlaylists.append({'alias':'HomePlaylist6', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist6")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist7") != '':
-                configPlaylists.append({'alias':'HomePlaylist7', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist7")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist8") != '':
-                configPlaylists.append({'alias':'HomePlaylist8', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist8")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist9") != '':
-                configPlaylists.append({'alias':'HomePlaylist9', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist9")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist10") != '':
-                configPlaylists.append({'alias':'HomePlaylist10', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist10")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist11") != '':
-                configPlaylists.append({'alias':'HomePlaylist11', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist11")})
-            if helper.getProperty("SkinWidgetPlaylists.HomePlaylist12") != '':
-                configPlaylists.append({'alias':'HomePlaylist12', 'path':helper.getProperty("SkinWidgetPlaylists.HomePlaylist12")})
-        else:
-            if settings.getSetting("HomePlaylist1") != '':
-                configPlaylists.append({'alias':'HomePlaylist1', 'path':settings.getSetting("HomePlaylist1")})
-            if settings.getSetting("HomePlaylist2") != '':
-                configPlaylists.append({'alias':'HomePlaylist2', 'path':settings.getSetting("HomePlaylist2")})
-            if settings.getSetting("HomePlaylist3") != '':
-                configPlaylists.append({'alias':'HomePlaylist3', 'path':settings.getSetting("HomePlaylist3")})
-            if settings.getSetting("HomePlaylist4") != '':
-                configPlaylists.append({'alias':'HomePlaylist4', 'path':settings.getSetting("HomePlaylist4")})
-            if settings.getSetting("HomePlaylist5") != '':
-                configPlaylists.append({'alias':'HomePlaylist5', 'path':settings.getSetting("HomePlaylist5")})  
-            if settings.getSetting("HomePlaylist6") != '':
-                configPlaylists.append({'alias':'HomePlaylist6', 'path':settings.getSetting("HomePlaylist6")})
-            if settings.getSetting("HomePlaylist7") != '':
-                configPlaylists.append({'alias':'HomePlaylist7', 'path':settings.getSetting("HomePlaylist7")})
-            if settings.getSetting("HomePlaylist8") != '':
-                configPlaylists.append({'alias':'HomePlaylist8', 'path':settings.getSetting("HomePlaylist8")})
-            if settings.getSetting("HomePlaylist9") != '':
-                configPlaylists.append({'alias':'HomePlaylist9', 'path':settings.getSetting("HomePlaylist9")})
-            if settings.getSetting("HomePlaylist10") != '':
-                configPlaylists.append({'alias':'HomePlaylist10', 'path':settings.getSetting("HomePlaylist10")})
-            if settings.getSetting("HomePlaylist11") != '':
-                configPlaylists.append({'alias':'HomePlaylist11', 'path':settings.getSetting("HomePlaylist11")})
-            if settings.getSetting("HomePlaylist12") != '':
-                configPlaylists.append({'alias':'HomePlaylist12', 'path':settings.getSetting("HomePlaylist12")})
+        count = 1
+        while count <= MAX_PLAYLIST:
+            alias = 'HomePlaylist%s' %count
+            property = 'SkinWidgetPlaylists.%s' %alias
+            if helper.getProperty(property) != '':
+                configPlaylists.append({'alias': alias, 'path': helper.getProperty(property)})
+            count += 1
         newPlaylistPath = [playlist['path'] for playlist in configPlaylists]
         for playlist in [playlist for playlist in self.Playlists if playlist.Path not in newPlaylistPath]:       
             playlist.Clean()

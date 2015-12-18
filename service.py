@@ -16,7 +16,7 @@ class Main:
         timer = 0
         while (not xbmc.abortRequested):
             xbmc.sleep(500)
-            if helper.getProperty('SkinWidgetPlaylists.ReloadSettings') == 'true' and self.Settings.getSetting("autoselect_playlist") == 'true':
+            if helper.getProperty('SkinWidgetPlaylists.ReloadSettings') == 'true':
                 helper.setProperty('SkinWidgetPlaylists.ReloadSettings', 'false')
                 self._onSettingsChanged()
             if int(self.Settings.getSetting("random_method")) == 0 :

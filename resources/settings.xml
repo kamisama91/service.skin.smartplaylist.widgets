@@ -5,7 +5,7 @@
 		<setting label="32002" type="slider" id="nb_item" default="10" range="1,1,20"  option="int"/>
     </category>
 	<category label="32100">
-		<setting label="32101" type="bool" id="recommended_enable" default="true"/>
+		<setting label="32101" type="bool" id="suggested_enable" default="true"/>
     </category>
 	<category label="32200">
 		<setting label="32201" type="bool" id="random_enable" default="true"/>
@@ -16,20 +16,5 @@
 	<category label="32300">
 		<setting label="32301" type="bool" id="recent_enable" default="true"/>
 		<setting label="32302" type="bool" id="recent_unplayed" subsetting="true" default="false" enable="eq(-1,true)"/>
-    </category>
-	<category label="32400">
-		<setting label="32401" type="bool" id="autoselect_playlist" subsetting="true" default="false"/>
-		<setting label="32402" type="file" id="HomePlaylist1" subsetting="true" enable="eq(-1,false)"/>
-		<setting label="32403" type="file" id="HomePlaylist2" subsetting="true" enable="eq(-2,false)"/>
-		<setting label="32404" type="file" id="HomePlaylist3" subsetting="true" enable="eq(-3,false)"/>
-		<setting label="32405" type="file" id="HomePlaylist4" subsetting="true" enable="eq(-4,false)"/>
-		<setting label="32406" type="file" id="HomePlaylist5" subsetting="true" enable="eq(-5,false)"/>
-		<setting label="32407" type="file" id="HomePlaylist6" subsetting="true" enable="eq(-6,false)"/>
-		<setting label="32408" type="file" id="HomePlaylist7" subsetting="true" enable="eq(-7,false)"/>
-		<setting label="32409" type="file" id="HomePlaylist8" subsetting="true" enable="eq(-8,false)"/>
-		<setting label="32410" type="file" id="HomePlaylist9" subsetting="true" enable="eq(-9,false)"/>
-		<setting label="32411" type="file" id="HomePlaylist10" subsetting="true" enable="eq(-10,false)"/>
-		<setting label="32412" type="file" id="HomePlaylist11" subsetting="true" enable="eq(-11,false)"/>
-		<setting label="32413" type="file" id="HomePlaylist12" subsetting="true" enable="eq(-12,false)"/>
     </category>
 </settings>
