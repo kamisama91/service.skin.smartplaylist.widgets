@@ -1,3 +1,6 @@
+v0.1.2
+- Bugfix : Some playlists where empty after playlists collection update (from trigger)
+
 v0.1.1
 - Override nb_item setting when its value is greater than 20 (hardcoded max item number)
 - (Re)Load settings at startup/Update instead of reading file at each setting value access

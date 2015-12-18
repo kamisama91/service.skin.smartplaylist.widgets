@@ -90,6 +90,8 @@ class PlaylistCollection():
         for playlist in [playlist for playlist in self.Playlists if playlist.Path not in newPlaylistPath]:       
             playlist.Clean()
             self.Playlists.remove(playlist)
+        for existingPlaylists in [existingPlaylist for existingPlaylist in self.Playlists if existingPlaylist.Path in [playlist['path'] for playlist in configPlaylists]]:
+            existingPlaylist.Clean()
         for playlist in configPlaylists:
             existingPlaylists = [existingPlaylist for existingPlaylist in self.Playlists if existingPlaylist.Path == playlist['path']]
             if len(existingPlaylists) > 0:

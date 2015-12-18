@@ -20,12 +20,8 @@ class Playlist():
             
     def UpdateSettings(self, alias, settings):
         self._readSettings(settings)
-        if self.Alias != alias:
-            if self.Alias:
-                self.Clean()
-            self.Alias = alias
-        if self.Alias:
-            self.Update(['Suggested', 'Recent', 'Random'])
+        self.Alias = alias
+        self.Update(['Suggested', 'Recent', 'Random'])
 
     def _readSettings(self, settings):
         if settings:
@@ -80,19 +76,20 @@ class Playlist():
 
  
     def Update(self, modes):
-        self._clearPlaylistProperties()
-        self._setPlaylistProperties()
-        for mode in modes:
-            items = None
-            if mode =='Suggested' and self.EnableSuggested:
-                items = self._getSuggestedItems()
-            elif mode == 'Recent' and self.EnableRecent:
-                items = self._getRecentItems()
-            elif self.EnableRandom:
-                mode = 'Random'
-                items = self._getRandomItems()
-            self._clearAllPlaylistItemsProperties(mode)
-            self._setAllPlaylistItemsProperties(mode, items)
+        if self.Alias:
+            self._clearPlaylistProperties()
+            self._setPlaylistProperties()
+            for mode in modes:
+                items = None
+                if mode =='Suggested' and self.EnableSuggested:
+                    items = self._getSuggestedItems()
+                elif mode == 'Recent' and self.EnableRecent:
+                    items = self._getRecentItems()
+                elif self.EnableRandom:
+                    mode = 'Random'
+                    items = self._getRandomItems()
+                self._clearAllPlaylistItemsProperties(mode)
+                self._setAllPlaylistItemsProperties(mode, items)
 
     def _setPlaylistProperties(self):
         helper.setProperty("%s.Name"       %self.Alias, self.Name)
@@ -137,9 +134,10 @@ class Playlist():
 
 
     def Clean(self):
-        self._clearPlaylistProperties()
-        for mode in ['Random', 'Recent', 'Suggested']:
-            self._clearAllPlaylistItemsProperties(mode)
+        if self.Alias:
+            self._clearPlaylistProperties()
+            for mode in ['Random', 'Recent', 'Suggested']:
+                self._clearAllPlaylistItemsProperties(mode)
         
     def _clearPlaylistProperties(self):
         for property in ['Name', 'Type', 'Count', 'Watched', 'Unwatched']:
