@@ -4,8 +4,11 @@ MAX_ITEM = 20
 
 class Playlist():
     def __init__(self, alias, path, name, type):
-        self.AddonPath = None
         self.Alias = None
+        self.Type = type
+        self.Path = path        
+        self.Name = name
+        self.AddonPath = None
         self.ItemLimit = 0
         self.EnableSuggested = False
         self.EnableRecent = False
@@ -13,9 +16,6 @@ class Playlist():
         self.EnableRandom = False
         self.RandomOnlyUnplayed = False
         self.RandomUpdateMethod = 0
-        self.Path = path        
-        self.Name = name
-        self.Type = type
         self.Items = self._fetchAllItems()
             
     def UpdateSettings(self, alias, settings):
@@ -162,11 +162,9 @@ class Playlist():
         return None
     
     def _fetchOneItem(self, id):
-        details = self._getDetails(id)
-        if details:
-            fetchPlaylist = self._createFechOnePlaylist(id, details['file'])
+        fetchPlaylist = self._getFechOnePlaylist(id)
+        if fetchPlaylist:
             result = self._fetchFromPlaylist(fetchPlaylist)
-            helper.deleteFile(fetchPlaylist)
             for file in result:
                 if file['id'] == id:
                     return file
@@ -175,31 +173,5 @@ class Playlist():
     def _getDetails(self, id):
         return None
   
-    def _createFechOnePlaylist(self, fileId, fullpath):
-        filePath = helper.splitPath(fullpath)
-        # Load template
-        _template = helper.loadXml('%s/resources/playlists/fetchone.xsp' %ADDON_PATH)
-        # Set name
-        _searchPlaylistName = 'searchPlaylist'
-        if '{PLALIST_TYPE}' in _template.getElementsByTagName('smartplaylist')[0].attributes.item(0).value:
-            _template.getElementsByTagName('smartplaylist')[0].attributes.item(0).value = _template.getElementsByTagName('smartplaylist')[0].attributes.item(0).value.replace('{PLALIST_TYPE}', self.Type + 's')
-        for node in _template.getElementsByTagName('name'):
-            if '{PLAYLIST_NAME}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{PLAYLIST_NAME}', self.Name)
-            if '{FILE_ID}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{FILE_ID}', str(fileId))
-            _searchPlaylistName = node.firstChild.nodeValue
-        # Set source playlist
-        for node in _template.getElementsByTagName('value'):
-            if '{PLAYLIST_NAME}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{PLAYLIST_NAME}', self.Name)
-            if '{FILE_PATH}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{FILE_PATH}', filePath[0] + '/')
-            if '{FILE_NAME}' in node.firstChild.nodeValue:
-                node.firstChild.nodeValue = node.firstChild.nodeValue.replace('{FILE_NAME}', filePath[1])
-        # Save formatedPlaylist
-        _path = '%s%s.xsp' %(helper.realPath('special://profile/playlists/video/'), _searchPlaylistName)
-        _file =  open(_path, 'wb')
-        _template.writexml(_file)
-        _file.close()
-        return _path.replace(helper.realPath('special://profile/'), 'special://profile/').replace('\\', '/') 
+    def _getFechOnePlaylist(self, fileId):
+        return None

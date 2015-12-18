@@ -1,6 +1,7 @@
 import xbmc
 import random
 import helper
+import urllib
 import playlist as pl
 
 class MoviePlaylist(pl.Playlist):
@@ -63,3 +64,13 @@ class MoviePlaylist(pl.Playlist):
         otherItems = sorted(otherItems, key=lambda x: x['dateadded'], reverse=True)
         items = startedItems + otherItems
         return items[:self.ItemLimit]
+
+    def _getFechOnePlaylist(self, id):
+        details = self._getDetails(id)
+        if details:
+            filepath = helper.splitPath(details['file'])
+            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"movies"}' %(self.Name, filepath[0] + '/', filepath[1])
+            playlistbase = 'videodb://movies/titles/?xsp=%s' %urllib.quote(playlistfilter)
+            return playlistbase
+        return None
+

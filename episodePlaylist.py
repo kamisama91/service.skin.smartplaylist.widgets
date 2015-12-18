@@ -1,11 +1,13 @@
+import urllib
 import xbmc
 import random
 import helper
 import playlist as pl
 
 class EpisodePlaylist(pl.Playlist):
-    def __init__(self, alias, path, name):
+    def __init__(self, alias, path, name, type):
         pl.Playlist.__init__(self, alias, path, name, 'episode')
+        self.RealType = type
         self.IgnoreSpecials = False
 
     def _readSettings(self, settings):
@@ -47,12 +49,6 @@ class EpisodePlaylist(pl.Playlist):
             for _file in _files:
                 if xbmc.abortRequested:
                     break
-                if _file['type'] == 'tvshow':
-                    showFiles = self._fetchAllFromTvShow(_file['id'])
-                    for showFile in showFiles:
-                        id = showFile.get('id', -1)
-                        if id != -1 and id not in [file['id'] for file in _result]:
-                            _result.append(showFile)
                 if _file['filetype'] == 'directory':
                     directoryFiles = self._fetchFromPlaylist(_file['file'])
                     for directoryFile in directoryFiles:
@@ -65,20 +61,8 @@ class EpisodePlaylist(pl.Playlist):
                         _result.append(_file)
         return _result
 
-    def _fetchAllFromTvShow(self, tvShowId):
-        _result = []
-        _json_response = helper.executeJsonRpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodes", "params": { "tvshowid": %s, "properties": ["file", "title", "tvshowid", "showtitle", "season", "episode", "art", "dateadded", "playcount", "lastplayed", "resume"] }, "id": 1}' %(tvShowId))
-        _files = _json_response.get( "result", {} ).get( "episodes" )
-        if _files:
-            for _file in _files:
-                if xbmc.abortRequested:
-                    break
-                _file["id"] = _file['episodeid']
-                _result.append(_file)
-        return _result
-
     def _getDetails(self, id):
-        _json_set_response = helper.executeJsonRpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodeDetails", "params": {"properties": ["file", "showtitle", "season", "episode", "playcount"], "episodeid":%s }, "id": 1}' %id)
+        _json_set_response = helper.executeJsonRpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodeDetails", "params": {"properties": ["file", "tvshowid", "showtitle", "season", "episode", "playcount"], "episodeid":%s }, "id": 1}' %id)
         details = _json_set_response.get( 'result', {} ).get( 'episodedetails', None )
         if details:
             details['id'] = details['episodeid']
@@ -116,3 +100,16 @@ class EpisodePlaylist(pl.Playlist):
                     nextEpisodes.append(episodes[0])
         return nextEpisodes[:self.ItemLimit]
         
+    def _getFechOnePlaylist(self, id):
+        details = self._getDetails(id)
+        if details:
+            if self.RealType == 'episodes':
+                filepath = helper.splitPath(details['file'])
+                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.Name, filepath[0] + '/', filepath[1])
+                playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.quote(playlistfilter))
+            elif self.RealType == 'tvshows':
+                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"title","operator":"is","value":["%s"]}]},"type":"tvshows"}' %(self.Name, details['showtitle'])
+                playlistbase = 'videodb://tvshows/titles/?xsp=%s' %(urllib.quote(playlistfilter))
+            
+            return playlistbase
+        return None

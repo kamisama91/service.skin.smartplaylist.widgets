@@ -13,24 +13,17 @@ class PlaylistCollection():
         _playlistType = ''
         if playlistPath != '':
             _doc = helper.loadXml(playlistPath)
-            _type = _doc.getElementsByTagName('smartplaylist')[0].attributes.item(0).value
-            if _type == 'movies':
-               _playlistType = 'Movie'
-            elif _type == 'episodes':
-               _playlistType = 'Episode'
-            elif _type == 'tvshows':
-               _playlistType = 'TvShow'
-            if _doc.getElementsByTagName('name'):
-                _playlistName = _doc.getElementsByTagName('name')[0].firstChild.nodeValue
+            _playlistType = _doc.getElementsByTagName('smartplaylist')[0].attributes.item(0).value
+            _playlistName = _doc.getElementsByTagName('name')[0].firstChild.nodeValue
         return _playlistName, _playlistType
 
     def _register(self, alias, path, settings):
         playlist = None
         playlistName, playlistType = self._getPlaylistInfos(path)
 
-        if playlistType in ['Episode', 'TvShow']:
-            playlist = epl.EpisodePlaylist(alias, path, playlistName)
-        elif playlistType == 'Movie':
+        if playlistType in ['episodes', 'tvshows']:
+            playlist = epl.EpisodePlaylist(alias, path, playlistName, playlistType)
+        elif playlistType == 'movies':
             playlist = mpl.MoviePlaylist(alias, path, playlistName)
         if playlist:
             self.Playlists.append(playlist)
