@@ -1,3 +1,7 @@
+v0.3.1
+- Add a property with the number of Set for movies smart playlist
+- Suggested movies take care of Set property
+
 v0.3.0
 - Override nb_item setting when its value is lower than 0
 - Code refactoring & normalization

@@ -14,7 +14,7 @@ WINDOW = xbmcgui.Window(10000)
 
 def log(txt):
     file = open(xbmc.translatePath(get_addon_config().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
-    file.write(txt + '\r\n')
+    file.write('%s\r\n' %txt)
     file.close()
     
 def get_property(property):

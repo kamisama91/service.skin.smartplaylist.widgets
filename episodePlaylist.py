@@ -28,7 +28,7 @@ class EpisodePlaylist(pl.Playlist):
    
     def _clear_playlist_properties(self):
         pl.Playlist._clear_playlist_properties(self)
-        for property in ['Name', 'Type', 'Count', 'Watched', 'Unwatched']:
+        for property in ['TvShows']:
             helper.clear_property('%s.%s' %(self._alias, property))
         
     def _clear_one_item_properties(self, property):
