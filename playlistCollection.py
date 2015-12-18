@@ -6,82 +6,87 @@ MAX_PLAYLIST = 12
 
 class PlaylistCollection():
     def __init__(self):
-        self.Playlists = []
+        self.__playlists = []
        
-    def _getPlaylistInfos (self, playlistPath):
-        _playlistName = ''
-        _playlistType = ''
+    def __get_playlist_details (self, playlistPath):
+        playlistName = ''
+        playlistType = ''
         if playlistPath != '':
-            _doc = helper.loadXml(playlistPath)
-            _playlistType = _doc.getElementsByTagName('smartplaylist')[0].attributes.item(0).value
-            _playlistName = _doc.getElementsByTagName('name')[0].firstChild.nodeValue
-        return _playlistName, _playlistType
+            playlistXml = helper.load_xml(playlistPath)
+            playlistType = playlistXml.getElementsByTagName('smartplaylist')[0].attributes.item(0).value
+            playlistName = playlistXml.getElementsByTagName('name')[0].firstChild.nodeValue
+        return playlistName, playlistType
 
-    def _register(self, alias, path, settings):
+    def __register(self, alias, path, settings):
         playlist = None
-        playlistName, playlistType = self._getPlaylistInfos(path)
-
+        playlistName, playlistType = self.__get_playlist_details(path)
         if playlistType in ['episodes', 'tvshows']:
             playlist = epl.EpisodePlaylist(alias, path, playlistName, playlistType)
         elif playlistType == 'movies':
             playlist = mpl.MoviePlaylist(alias, path, playlistName)
         if playlist:
-            self.Playlists.append(playlist)
-            playlist.UpdateSettings(alias, settings)
+            self.__playlists.append(playlist)
+            playlist.update_settings(alias, settings)
 
-    def Update(self, settings):
+    def update(self, settings):
         configPlaylists = []
         count = 1
         while count <= MAX_PLAYLIST:
             alias = 'HomePlaylist%s' %count
             property = 'SkinWidgetPlaylists.%s' %alias
-            if helper.getProperty(property) != '':
-                configPlaylists.append({'alias': alias, 'path': helper.getProperty(property)})
+            if helper.get_property(property) != '':
+                configPlaylists.append({'alias': alias, 'path': helper.get_property(property)})
             count += 1
         newPlaylistPath = [playlist['path'] for playlist in configPlaylists]
-        for playlist in [playlist for playlist in self.Playlists if playlist.Path not in newPlaylistPath]:       
+        for playlist in [playlist for playlist in self.__playlists if playlist.path not in newPlaylistPath]:       
             playlist.Clean()
-            self.Playlists.remove(playlist)
-        for existingPlaylists in [existingPlaylist for existingPlaylist in self.Playlists if existingPlaylist.Path in [playlist['path'] for playlist in configPlaylists]]:
+            self.__playlists.remove(playlist)
+        for existingPlaylists in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.path in [playlist['path'] for playlist in configPlaylists]]:
             existingPlaylist.Clean()
         for playlist in configPlaylists:
-            existingPlaylists = [existingPlaylist for existingPlaylist in self.Playlists if existingPlaylist.Path == playlist['path']]
+            existingPlaylists = [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.path == playlist['path']]
             if len(existingPlaylists) > 0:
                 for existingPlaylist in existingPlaylists:
-                    existingPlaylist.UpdateSettings(playlist['alias'], settings)
+                    existingPlaylist.update_settings(playlist['alias'], settings)
             else:
-                self._register(playlist['alias'], playlist['path'], settings)
+                self.__register(playlist['alias'], playlist['path'], settings)
 
-    def UpdateAllPlaylists(self, modes):
-        for playlist in [playlist for playlist in self.Playlists]:
-            playlist.Update(modes)
+    def update_all_playlists(self, modes):
+        for playlist in [playlist for playlist in self.__playlists]:
+            playlist.update(modes)
                 
-    def AddItem(self, type, id):
-        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
-            playlist.AddItem(id)
-        
-    def RemoveItem(self, type, id):
-        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
-            playlist.RemoveItem(id)
-                
-    def SetWatched(self, type, id):
-        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
-            playlist.SetWatched(id)
+    def contains_item(self, type, id):
+        itemFound = False
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            itemFound = itemFound or playlist.contains_item(id)
+        return itemFound
             
-    def SetUnwatched(self, type, id):
-        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
-            playlist.SetUnWatched(id)      
+    def add_item(self, type, id):
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            playlist.add_item(id)
+        
+    def remove_item(self, type, id):
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            playlist.remove_item(id)
+                
+    def set_watched(self, type, id):
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            playlist.set_watched(id)
+            
+    def set_unwatched(self, type, id):
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            playlist.set_unwatched(id)      
     
-    def StartPlaying(self, type, id):
-        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
-            playlist.StartPlaying(id)
+    def start_playing(self, type, id):
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            playlist.start_playing(id)
     
-    def StopPlaying(self, type, id, isEnded):
-        for playlist in [playlist for playlist in self.Playlists if playlist.Type == type]:
-            playlist.StopPlaying(id, isEnded)
+    def stop_playing(self, type, id, isEnded):
+        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+            playlist.stop_playing(id, isEnded)
          
-    def GetPlaycountFromDatabase(self, type, id):
-        playlists = [playlist for playlist in self.Playlists if playlist.Type == type]
+    def get_playcount_from_database(self, type, id):
+        playlists = [playlist for playlist in self.__playlists if playlist.type == type]
         if len(playlists) > 0:
-            return max([playlist.GetPlaycountFromDatabase(id) for playlist in playlists])        
+            return max([playlist.get_playcount_from_database(id) for playlist in playlists])        
         return 0

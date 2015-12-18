@@ -9,44 +9,43 @@ if sys.version_info < (2, 7):
     import simplejson
 else:
     import json as simplejson
-    
+
+WINDOW = xbmcgui.Window(10000)
+
 def log(txt):
-    file = open(xbmc.translatePath(getAddon().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
+    file = open(xbmc.translatePath(get_addon_config().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
     file.write(txt + '\r\n')
     file.close()
     
-def getProperty ( _property ):
-    return xbmcgui.Window( 10000 ).getProperty ( _property )
+def get_property(property):
+    return WINDOW.getProperty(property)
     
-def setProperty ( _property, _value):
-    xbmcgui.Window( 10000 ).setProperty ( _property, _value )
+def set_property(property, value):
+    WINDOW.setProperty(property, value)
 
-def clearProperty ( _property ):
-    xbmcgui.Window( 10000 ).clearProperty ( _property )
+def clear_property(property):
+    WINDOW.clearProperty(property)
     
-def isHomeScreen ():
+def is_home_screen():
     return xbmcgui.getCurrentWindowId() == 10000
     
-def getAddon():
+def get_addon_config():
     return xbmcaddon.Addon()
     
-def currentTime():
+def current_time():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
     
-def loadJson(json):
+def load_json(json):
     return simplejson.loads(json)
 
-def loadXml(path):
-    return parse(realPath(path))
+def load_xml(path):
+    return parse(get_real_path(path))
     
-def splitPath(path):
+def split_path(path):
     return os.path.split(path)
     
-def realPath(path):
+def get_real_path(path):
     return xbmc.translatePath(path)
-    
-def deleteFile(path):
-    os.remove(realPath(path))
-    
-def executeJsonRpc(json):
-    return loadJson(unicode(xbmc.executeJSONRPC(json), 'utf-8', errors='ignore'))
+        
+def execute_json_rpc(json):
+    return load_json(unicode(xbmc.executeJSONRPC(json), 'utf-8', errors='ignore'))

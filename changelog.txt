@@ -1,3 +1,7 @@
+v0.3.0
+- Override nb_item setting when its value is lower than 0
+- Code refactoring & normalization
+
 v0.2.1
 - Bugfix : Home screen is blinking after items update
 
