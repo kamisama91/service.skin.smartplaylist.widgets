@@ -1,3 +1,7 @@
+v0.1.1
+- Override nb_item setting when its value is greater than 20 (hardcoded max item number)
+- (Re)Load settings at startup/Update instead of reading file at each setting value access
+
 v0.1.0
 - Add "SkinWidgetsPlaylists_ReloadSettings" trigger to force service to refresh smart playlists collection
 
