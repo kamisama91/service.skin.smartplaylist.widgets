@@ -77,7 +77,6 @@ class Playlist():
  
     def Update(self, modes):
         if self.Alias:
-            self._clearPlaylistProperties()
             self._setPlaylistProperties()
             for mode in modes:
                 items = None
@@ -88,8 +87,8 @@ class Playlist():
                 elif self.EnableRandom:
                     mode = 'Random'
                     items = self._getRandomItems()
-                self._clearAllPlaylistItemsProperties(mode)
                 self._setAllPlaylistItemsProperties(mode, items)
+                self._clearAllPlaylistItemsPropertiesFromPosition(mode, len(items) + 1)
 
     def _setPlaylistProperties(self):
         helper.setProperty("%s.Name"       %self.Alias, self.Name)
@@ -144,7 +143,10 @@ class Playlist():
             helper.clearProperty('%s.%s' %(self.Alias, property))
         
     def _clearAllPlaylistItemsProperties(self, mode):        
-        count = 1
+        self._clearAllPlaylistItemsPropertiesFromPosition(mode, 1)
+    
+    def _clearAllPlaylistItemsPropertiesFromPosition(self, mode, position):        
+        count = position
         while count <= MAX_ITEM:
             property = '%s#%s.%s' %(self.Alias, mode, count)
             self._clearOnePlaylistItemsProperties(property)
