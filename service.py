@@ -7,7 +7,7 @@ class Main:
         self.__settings = None
         self.__collection = plc.PlaylistCollection()
         self.__monitor = WidgetsMonitor(onNotificationCallback = self.__on_notification_cb, onSettingsChangedCallback = self.__on_settings_changed_cb)
-        helper.set_property('SkinWidgetPlaylists.ReloadSettings', 'false')
+        helper.set_property('service.skin.smartplaylist.widgets.ReloadSettings', 'false')
         self.__on_settings_changed_cb()        
         self.__daemon()
 
@@ -16,8 +16,8 @@ class Main:
         timer = 0
         while (not xbmc.abortRequested):
             xbmc.sleep(500)
-            if helper.get_property('SkinWidgetPlaylists.ReloadSettings') == 'true':
-                helper.set_property('SkinWidgetPlaylists.ReloadSettings', 'false')
+            if helper.get_property('service.skin.smartplaylist.widgets.ReloadSettings') == 'true':
+                helper.set_property('service.skin.smartplaylist.widgets.ReloadSettings', 'false')
                 self.__on_settings_changed_cb()
             if int(self.__settings.getSetting("random_method")) == 0 :
                 # convert time to seconds, times 2 for 0,5 second sleep compensation

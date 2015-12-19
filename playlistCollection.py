@@ -32,10 +32,9 @@ class PlaylistCollection():
         configPlaylists = []
         count = 1
         while count <= MAX_PLAYLIST:
-            alias = 'HomePlaylist%s' %count
-            property = 'SkinWidgetPlaylists.%s' %alias
+            property = 'service.skin.smartplaylist.widgets.SmartPlaylist%s' %count
             if helper.get_property(property) != '':
-                configPlaylists.append({'alias': alias, 'path': helper.get_property(property)})
+                configPlaylists.append({'alias': property, 'path': helper.get_property(property)})
             count += 1
         newPlaylistPath = [playlist['path'] for playlist in configPlaylists]
         for playlist in [playlist for playlist in self.__playlists if playlist.path not in newPlaylistPath]:       
