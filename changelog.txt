@@ -1,3 +1,6 @@
+v0.3.3
+- Movies now export the Set property in "service.skin.smartplaylist.widgets.SmartPlaylist*.*.SetTitle" 
+
 v0.3.2
 - Rename "SkinWidgetsPlaylists_ReloadSettings" trigger to "service.skin.smartplaylist.widgets.ReloadSettings"
 - Rename "SkinWidgetPlaylists.HomePlaylist*" properties to "service.skin.smartplaylist.widgets.SmartPlaylist*" 

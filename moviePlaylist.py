@@ -14,6 +14,7 @@ class MoviePlaylist(pl.Playlist):
     def _set_one_item_properties(self, property, item):
         pl.Playlist._set_one_item_properties(self, property, item)
         if item:
+            helper.set_property("%s.SetTitle"  % property, item.get('set'))
             helper.set_property("%s.Art(poster)"  % property, item['art'].get('poster',''))
             helper.set_property("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
 
@@ -24,7 +25,7 @@ class MoviePlaylist(pl.Playlist):
             
     def _clear_one_item_properties(self, property):
         pl.Playlist._clear_one_item_properties(self, property)
-        for item in ['Art(poster)', 'Art(fanart)']:
+        for item in ['SetTitle', 'Art(poster)', 'Art(fanart)']:
             helper.clear_property('%s.%s' %(property, item)) 
     
     def _getSetCount(self):
