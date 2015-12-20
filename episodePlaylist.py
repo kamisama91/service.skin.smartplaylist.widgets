@@ -1,25 +1,24 @@
 import random
 import urllib
 import helper
-import playlist as pl
+import videoPlaylist as vpl
 
-class EpisodePlaylist(pl.Playlist):
+class EpisodePlaylist(vpl.VideoPlaylist):
     def __init__(self, alias, path, name, type):
-        pl.Playlist.__init__(self, alias, path, name, 'episode')
-        self.__realType = type
+        vpl.VideoPlaylist.__init__(self, alias, path, name, type, 'episode')
         self.__ignoreSpecials = False
 
     def _read_settings(self, settings):
-        pl.Playlist._read_settings(self, settings)
+        vpl.VideoPlaylist._read_settings(self, settings)
         if settings:
             self.__ignoreSpecials = settings.getSetting("ignore_specials") == 'true'
             
     def _set_playlist_properties(self):
-        pl.Playlist._set_playlist_properties(self)
+        vpl.VideoPlaylist._set_playlist_properties(self)
         helper.set_property("%s.TvShows" %self._alias, str(self._getTvShowCount()))
     
     def _set_one_item_properties(self, property, item):
-        pl.Playlist._set_one_item_properties(self, property, item)
+        vpl.VideoPlaylist._set_one_item_properties(self, property, item)
         if item:
             helper.set_property("%s.EpisodeNo"    % property, "S%.2dE%.2d" %(float(item.get('season')), float(item.get('episode'))))
             helper.set_property("%s.TVshowTitle"  % property, item.get('showtitle'))
@@ -27,12 +26,12 @@ class EpisodePlaylist(pl.Playlist):
             helper.set_property("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
    
     def _clear_playlist_properties(self):
-        pl.Playlist._clear_playlist_properties(self)
+        vpl.VideoPlaylist._clear_playlist_properties(self)
         for property in ['TvShows']:
             helper.clear_property('%s.%s' %(self._alias, property))
         
     def _clear_one_item_properties(self, property):
-        pl.Playlist._clear_one_item_properties(self, property)
+        vpl.VideoPlaylist._clear_one_item_properties(self, property)
         for item in ['EpisodeNo', 'TVshowTitle', 'Art(thumb)', 'Art(fanart)']:
             helper.clear_property('%s.%s' %(property, item)) 
                 
@@ -41,7 +40,7 @@ class EpisodePlaylist(pl.Playlist):
         return len(showIds)
 
     def _get_item_details_fields(self):
-        return pl.Playlist._get_item_details_fields(self) + ', "tvshowid", "showtitle", "season", "episode"'
+        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "tvshowid", "showtitle", "season", "episode"'
 
     def _get_one_item_details_from_database(self, id):
         response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodeDetails", "params": {"properties": [%s], "episodeid":%s }, "id": 1}' %(self._get_item_details_fields(),id))
@@ -115,14 +114,14 @@ class EpisodePlaylist(pl.Playlist):
         result = nextEpisodes + firstEpisodes  
         return result[:self._itemLimit]
         
-    def _get_fech_one_item_video_source(self, details):
+    def _get_fech_one_item_directory_source(self, details):
         if details:
-            if self.__realType == 'episodes':
+            if self.playlistType == 'episodes':
                 filepath = helper.split_path(details['file'])
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.name, filepath[0] + '/', filepath[1])
+                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.playlistName, filepath[0], filepath[1])
                 playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.quote(playlistfilter))
-            elif self.__realType == 'tvshows':
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"title","operator":"is","value":["%s"]}]},"type":"tvshows"}' %(self.name, details['showtitle'])
+            elif self.playlistType == 'tvshows':
+                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"title","operator":"is","value":["%s"]}]},"type":"tvshows"}' %(self.playlistName, details['showtitle'])
                 playlistbase = 'videodb://tvshows/titles/?xsp=%s' %(urllib.quote(playlistfilter))
             return playlistbase
         return None

@@ -1,3 +1,8 @@
+v0.4.0
+- Add support for MusicVideo and Audio smart playlists
+- Service is launched at startup instead of login (error when switching profile)
+- Listen to Player.OnStop notification instead of [Video/Audio]Library.OnUpdate to refresh played items in collection (sometimes OnUpdate is not received)
+
 v0.3.4
 - Suggested movies from a set are sorted with using the greater date in the maximum lastplayed date from the set and the minimum dateadded from not played movies in the set, then maximum lastplayed date from the set
 - Suggested episodes are sorted with using the greater date in the maximum lastplayed date from the show and the minimum dateadded from not played episodes in the show, then maximum lastplayed date from the show

@@ -1,30 +1,30 @@
 import random
 import urllib
 import helper
-import playlist as pl
+import videoPlaylist as vpl
 
-class MoviePlaylist(pl.Playlist):
-    def __init__(self, alias, path, name):
-        pl.Playlist.__init__(self, alias, path, name, 'movie')
+class MoviePlaylist(vpl.VideoPlaylist):
+    def __init__(self, alias, path, name, type):
+        vpl.VideoPlaylist.__init__(self, alias, path, name, type, 'movie')
     
     def _set_playlist_properties(self):
-        pl.Playlist._set_playlist_properties(self)
+        vpl.VideoPlaylist._set_playlist_properties(self)
         helper.set_property("%s.Sets" %self._alias, str(self._getSetCount()))
         
     def _set_one_item_properties(self, property, item):
-        pl.Playlist._set_one_item_properties(self, property, item)
+        vpl.VideoPlaylist._set_one_item_properties(self, property, item)
         if item:
             helper.set_property("%s.SetTitle"  % property, item.get('set'))
             helper.set_property("%s.Art(poster)"  % property, item['art'].get('poster',''))
-            helper.set_property("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
+            helper.set_property("%s.Art(fanart)"  % property, item['art'].get('fanart',''))
 
     def _clear_playlist_properties(self):
-        pl.Playlist._clear_playlist_properties(self)
+        vpl.VideoPlaylist._clear_playlist_properties(self)
         for property in ['Sets']:
             helper.clear_property('%s.%s' %(self._alias, property))
             
     def _clear_one_item_properties(self, property):
-        pl.Playlist._clear_one_item_properties(self, property)
+        vpl.VideoPlaylist._clear_one_item_properties(self, property)
         for item in ['SetTitle', 'Art(poster)', 'Art(fanart)']:
             helper.clear_property('%s.%s' %(property, item)) 
     
@@ -33,7 +33,7 @@ class MoviePlaylist(pl.Playlist):
         return len(setIds)
         
     def _get_item_details_fields(self):
-        return pl.Playlist._get_item_details_fields(self) + ', "setid", "set", "year"'
+        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "setid", "set", "year"'
    
     def _get_one_item_details_from_database(self, id):
         response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovieDetails", "params": {"properties": [%s], "movieid":%s }, "id": 1}' %(self._get_item_details_fields(), id))
@@ -93,10 +93,10 @@ class MoviePlaylist(pl.Playlist):
         items = startedMovies + nextMoviesFromStartedSets + otherItems
         return items[:self._itemLimit]
 
-    def _get_fech_one_item_video_source(self, details):
+    def _get_fech_one_item_directory_source(self, details):
         if details:
             filepath = helper.split_path(details['file'])
-            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"movies"}' %(self.name, filepath[0] + '/', filepath[1])
+            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"movies"}' %(self.playlistName, filepath[0], filepath[1])
             playlistbase = 'videodb://movies/titles/?xsp=%s' %urllib.quote(playlistfilter)
             return playlistbase
         return None

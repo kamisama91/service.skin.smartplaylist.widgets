@@ -4,11 +4,13 @@ import helper
 MAX_ITEM = 20
 
 class Playlist():
-    def __init__(self, alias, path, name, type):
-        self.path = path 
-        self.name = name        
-        self.type  = type
+    def __init__(self, alias, path, name, playlistType, itemType, mediaType):
         self._alias = None
+        self.playlistPath = path 
+        self.playlistName = name        
+        self.playlistType = playlistType        #movies/episodes/tvshows/musicvideos/songs/albums/artists/mixed        
+        self.itemType = itemType                #movie/episode/musicvideo/song
+        self.mediaType = mediaType              #video/music/pictures/files/programs
         self.__enableSuggested = False
         self.__enableRecent = False
         self.__enableRandom = False
@@ -32,7 +34,11 @@ class Playlist():
             self._recentOnlyUnplayed = settings.getSetting("recent_unplayed") == 'true'            
             self._randomOnlyUnplayed = settings.getSetting("random_unplayed") == 'true'
             self.__randomUpdateMethod = int(settings.getSetting("random_method")) == 1
-
+    
+    def reload_paylist_content(self):
+        self._items = self.__fetch_all_items()
+        self.update(['Suggested', 'Recent', 'Random'])
+          
     def contains_item(self, id):
         return len([item for item in self._items if item['id']==id]) > 0
         
@@ -46,12 +52,11 @@ class Playlist():
     def remove_item(self, id):
         for item in [item for item in self._items if item['id']==id]:
             self._items.remove(item)
-            self.update(['Suggested', 'Recent', 'Random'] if self.__randomUpdateMethod else ['Suggested', 'Recent'])
+            self.update(['Suggested', 'Recent', 'Random'])
                 
     def set_watched(self, id):
         for item in [item for item in self._items if item['id']==id and item['playcount']==0]:
             item['playcount'] = 1
-            item['resume']['position'] = 0
             item['lastplayed'] = helper.current_time()
             self.update(['Suggested', 'Recent', 'Random'] if self.__randomUpdateMethod else ['Suggested', 'Recent'])
                 
@@ -63,19 +68,25 @@ class Playlist():
     def start_playing(self, id):
         for item in [item for item in self._items if item['id']==id]:
             item['lastplayed'] = helper.current_time()
-            item['resume']['position'] = 1
     
     def stop_playing(self, id, isEnded):
-        if isEnded == False:
-            self.update(['Suggested'])
-            
-    def get_playcount_from_database(self, id):
-        for item in [item for item in self._items if item['id']==id]:
-            details = self._get_one_item_details_from_database(id)
-            if details:
-                return details['playcount']
-        return 0
- 
+        for itemFromPlaylist in [item for item in self._items if item['id']==id]:
+            if isEnded == True:
+                self.set_watched(itemFromPlaylist['id'])
+            else:
+                itemFromDatabase = None
+                itemUpdatedInDatabase = False
+                #Wait item update in database
+                while not itemUpdatedInDatabase:
+                    itemFromDatabase = self._get_one_item_details_from_database(itemFromPlaylist['id'])
+                    itemUpdatedInDatabase = itemFromDatabase['lastplayed'] and (itemFromDatabase['lastplayed'] > itemFromPlaylist['lastplayed'])
+                    xbmc.sleep(100)
+                #Item updated then set watched or just update Suggested
+                if itemFromDatabase['playcount'] > 0:
+                    self.set_watched(itemFromDatabase['id'])
+                else:
+                    self.update(['Suggested'])
+             
     def update(self, modes):
         if self._alias:
             self._set_playlist_properties()
@@ -88,12 +99,15 @@ class Playlist():
                 elif self.__enableRandom:
                     mode = 'Random'
                     items = self._get_random_items()
-                self.__set_all_items_properties(mode, items)
-                self._clear_all_items_Properties_from_position(mode, len(items) + 1)
+                if items:
+                    self.__set_all_items_properties(mode, items)
+                    self._clear_all_items_Properties_from_position(mode, len(items) + 1)
+                else:
+                    self._clear_all_items_Properties(mode)
 
     def _set_playlist_properties(self):
-        helper.set_property("%s.Name"       %self._alias, self.name)
-        helper.set_property("%s.Type"       %self._alias, self.type )
+        helper.set_property("%s.Name"       %self._alias, self.playlistName)
+        helper.set_property("%s.Type"       %self._alias, self.itemType )
         helper.set_property("%s.Count"      %self._alias, str(self.__get_item_count()))
         helper.set_property("%s.Watched"    %self._alias, str(self.__get_watched_item_count()))
         helper.set_property("%s.Unwatched"  %self._alias, str(self.__get_unwatched_item_count()))
@@ -127,8 +141,8 @@ class Playlist():
     def _set_one_item_properties(self, property, item):
         if item:
             helper.set_property("%s.DBID"         % property, str(item.get('id')))
-            helper.set_property("%s.Title"        % property, item.get('title'))
             helper.set_property("%s.File"         % property, item.get('file',''))
+            helper.set_property("%s.Title"        % property, item.get('title'))            
         else:
             helper.set_property("%s.Title"        % property, '')
 
@@ -159,28 +173,28 @@ class Playlist():
 
 
     def __fetch_all_items(self):
-        return self.__fetch_all_items_from_video_source(self.path)
+        return self.__fetch_all_items_from_directory_source(self.playlistPath)
     
     def __fetch_one_item(self, id):
         details = self._get_one_item_details_from_database(id)
-        fetchPlaylist = self._get_fech_one_item_video_source(details)
+        fetchPlaylist = self._get_fech_one_item_directory_source(details)
         if fetchPlaylist:
-            result = self.__fetch_all_items_from_video_source(fetchPlaylist)
+            result = self.__fetch_all_items_from_directory_source(fetchPlaylist)
             for file in result:
                 if file['id'] == id:
                     return file
         return None
         
-    def __fetch_all_items_from_video_source(self, directory):
+    def __fetch_all_items_from_directory_source(self, directory):
         result = []
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "video", "properties": [%s]}, "id": 1}' %(directory, self._get_item_details_fields()))
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(directory, self.mediaType, self._get_item_details_fields()))
         files = response.get( "result", {} ).get( "files" )
         if files:
             for _file in files:
                 if xbmc.abortRequested:
                     break
                 if _file['filetype'] == 'directory':
-                    directoryFiles = self.__fetch_all_items_from_video_source(_file['file'])
+                    directoryFiles = self.__fetch_all_items_from_directory_source(_file['file'])
                     for directoryFile in directoryFiles:
                         id = directoryFile.get('id', -1)
                         if id != -1 and id not in [file['id'] for file in result]:
@@ -192,10 +206,10 @@ class Playlist():
         return result
     
     def _get_item_details_fields(self):
-        return '"file", "title", "dateadded", "lastplayed", "playcount", "resume", "art"'
+         return '"file", "title", "lastplayed", "playcount"'
 
     def _get_one_item_details_from_database(self, id):
         return None
   
-    def _get_fech_one_item_video_source(self, fileId):
+    def _get_fech_one_item_directory_source(self, fileId):
         return None

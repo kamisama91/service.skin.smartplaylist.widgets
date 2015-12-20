@@ -48,7 +48,14 @@ def load_xml(path):
     return parse(get_real_path(path))
     
 def split_path(path):
-    return os.path.split(path)
+    splitPath = os.path.split(path)
+    tokens = []
+    tokens.append(splitPath[0])
+    tokens.append(splitPath[1])    
+    tokens[0] = tokens[0] + ('/' if '/' in tokens[0] else '\\')
+    tokens[0] = tokens[0].replace('\\', '\\\\')
+    return tokens
+    
     
 def get_real_path(path):
     return xbmc.translatePath(path)

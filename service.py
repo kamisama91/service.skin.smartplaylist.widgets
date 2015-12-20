@@ -34,30 +34,24 @@ class Main:
                     home_update = True
     
     def __on_notification_cb(self, method, data):
-        if method == 'VideoLibrary.OnUpdate':
-            contentId = data['item']['id']
-            contentType = data['item']['type']
-            playcount = data.get('playcount', -1)
+        if method in ['VideoLibrary.OnUpdate', 'AudioLibrary.OnUpdate']:
+            contentId = data.get('item', data)['id']
+            contentType =  data.get('item', data)['type']
+            playcount = data.get('playcount', -1)           
             if not self.__collection.contains_item(contentType, contentId):
                 self.__collection.add_item(contentType, contentId)
             elif playcount == 0:
                 self.__collection.set_unwatched(contentType, contentId)
-            elif playcount > 0 or self.__collection.get_playcount_from_database(contentType, contentId) > 0:
-                self.__collection.set_watched(contentType, contentId)
         elif method == 'VideoLibrary.OnRemove':
-            contentId = data['id']
-            contentType = data['type']
-            self.__collection.remove_item(contentType, contentId)
+            self.__collection.remove_item(data['type'], data['id'])
         elif method == 'Player.OnPlay':
-            contentId = data['item']['id']
-            contentType = data['item']['type']
-            self.__collection.start_playing(contentType, contentId)
+            self.__collection.start_playing(data['item']['type'], data['item']['id'])
         elif method == 'Player.OnStop':
-            contentId = data['item']['id']
-            contentType = data['item']['type']
-            isEnded = data.get('end', False)
-            self.__collection.stop_playing(contentType, contentId, isEnded)
-            
+            self.__collection.stop_playing(data['item']['type'], data['item']['id'], data.get('end', False))
+        elif method == 'AudioLibrary.OnCleanFinished':
+            #AudioLibrary.OnRemove is not accurate...
+            self.__collection.reload_paylist_content('song')
+
     def __on_settings_changed_cb(self):
         self.__settings = helper.get_addon_config()
         self.__collection.update(self.__settings)

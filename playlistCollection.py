@@ -1,6 +1,8 @@
 import helper
 import moviePlaylist as mpl
 import episodePlaylist as epl
+import musicvideoPlaylist as mvpl
+import songPlaylist as spl
 
 MAX_PLAYLIST = 12
 
@@ -23,7 +25,11 @@ class PlaylistCollection():
         if playlistType in ['episodes', 'tvshows']:
             playlist = epl.EpisodePlaylist(alias, path, playlistName, playlistType)
         elif playlistType == 'movies':
-            playlist = mpl.MoviePlaylist(alias, path, playlistName)
+            playlist = mpl.MoviePlaylist(alias, path, playlistName, playlistType)
+        elif playlistType == 'musicvideos':
+            playlist = mvpl.MusicVideoPlaylist(alias, path, playlistName, playlistType)
+        elif playlistType in ['songs', 'albums', 'artists']:
+            playlist = spl.SongPlaylist(alias, path, playlistName, playlistType)
         if playlist:
             self.__playlists.append(playlist)
             playlist.update_settings(alias, settings)
@@ -37,13 +43,13 @@ class PlaylistCollection():
                 configPlaylists.append({'alias': property, 'path': helper.get_property(property)})
             count += 1
         newPlaylistPath = [playlist['path'] for playlist in configPlaylists]
-        for playlist in [playlist for playlist in self.__playlists if playlist.path not in newPlaylistPath]:       
+        for playlist in [playlist for playlist in self.__playlists if playlist.playlistPath not in newPlaylistPath]:       
             playlist.clean()
             self.__playlists.remove(playlist)
-        for existingPlaylists in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.path in [playlist['path'] for playlist in configPlaylists]]:
+        for existingPlaylists in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath in [playlist['path'] for playlist in configPlaylists]]:
             existingPlaylist.clean()
         for playlist in configPlaylists:
-            existingPlaylists = [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.path == playlist['path']]
+            existingPlaylists = [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath == playlist['path']]
             if len(existingPlaylists) > 0:
                 for existingPlaylist in existingPlaylists:
                     existingPlaylist.update_settings(playlist['alias'], settings)
@@ -53,39 +59,37 @@ class PlaylistCollection():
     def update_all_playlists(self, modes):
         for playlist in [playlist for playlist in self.__playlists]:
             playlist.update(modes)
-                
+       
+    def reload_paylist_content(self, type):
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
+            playlist.reload_paylist_content()
+    
     def contains_item(self, type, id):
         itemFound = False
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             itemFound = itemFound or playlist.contains_item(id)
         return itemFound
             
     def add_item(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             playlist.add_item(id)
         
     def remove_item(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             playlist.remove_item(id)
                 
     def set_watched(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             playlist.set_watched(id)
             
     def set_unwatched(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             playlist.set_unwatched(id)      
     
     def start_playing(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             playlist.start_playing(id)
     
     def stop_playing(self, type, id, isEnded):
-        for playlist in [playlist for playlist in self.__playlists if playlist.type == type]:
+        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
             playlist.stop_playing(id, isEnded)
-         
-    def get_playcount_from_database(self, type, id):
-        playlists = [playlist for playlist in self.__playlists if playlist.type == type]
-        if len(playlists) > 0:
-            return max([playlist.get_playcount_from_database(id) for playlist in playlists])        
-        return 0
