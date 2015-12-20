@@ -11,6 +11,8 @@ else:
     import json as simplejson
 
 WINDOW = xbmcgui.Window(10000)
+# This is a throwaway variable to deal with a python bug
+throwaway = time.strptime('20110101','%Y%m%d')
 
 def log(txt):
     file = open(xbmc.translatePath(get_addon_config().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
@@ -34,6 +36,10 @@ def get_addon_config():
     
 def current_time():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+
+def date(datetimeString):
+    datetimeObject = time.strptime(datetimeString, "%Y-%m-%d %H:%M:%S")
+    return time.strftime("%Y-%m-%d 00:00:00", datetimeObject)
     
 def load_json(json):
     return simplejson.loads(json)

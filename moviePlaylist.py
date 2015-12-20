@@ -61,10 +61,15 @@ class MoviePlaylist(pl.Playlist):
         playedSets = []
         playedSetIds = set([item['setid'] for item in self._items if item['setid']>0 and item['playcount']>0 and item['setid'] not in [startedItem['setid'] for startedItem in startedMovies]])
         for playedSetId in playedSetIds:
+            #Relevent order in max(lastpayed in set set, min(date(dateadded) with palycount=0 in set set)), lastplayed 
             lastPlayed = max([item['lastplayed'] for item in self._items if item['setid']==playedSetId])
-            playedSets.append({'setid':playedSetId, 'lastplayed':lastPlayed})
+            dateAdded = "0000-00-00 00:00:00"
+            setUnplayedMoviesDateAdded = [helper.date(item['dateadded']) for item in self._items if item['setid']==playedSetId and item['playcount']==0]
+            if len(setUnplayedMoviesDateAdded) > 0:
+                dateAdded = min(setUnplayedMoviesDateAdded)
+            playedSets.append({'setid':playedSetId, 'relevantupdatedate':max([lastPlayed,dateAdded]), 'lastplayed':lastPlayed})
+        playedSets = sorted(playedSets, key=lambda x: [x['relevantupdatedate'],x['lastplayed']], reverse=True)
         nextMoviesFromStartedSets = []
-        playedSets = sorted(playedSets, key=lambda x: x['lastplayed'], reverse=True)
         for playedSet in playedSets:
             movies = [item for item in unplayedItems if item['setid']==playedSet['setid']]
             movies = sorted(movies, key=lambda x: x['year'], reverse=False)

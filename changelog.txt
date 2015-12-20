@@ -1,3 +1,8 @@
+v0.3.4
+- Suggested movies from a set are sorted with using the greater date in the maximum lastplayed date from the set and the minimum dateadded from not played movies in the set, then maximum lastplayed date from the set
+- Suggested episodes are sorted with using the greater date in the maximum lastplayed date from the show and the minimum dateadded from not played episodes in the show, then maximum lastplayed date from the show
+- Suggested episodes from a show not in progress (sorted by maximum dateadded of the show) are provided after episodes from in progress shows
+
 v0.3.3
 - Movies now export the Set property in "service.skin.smartplaylist.widgets.SmartPlaylist*.*.SetTitle" 
 

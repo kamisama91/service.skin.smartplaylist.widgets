@@ -63,24 +63,57 @@ class EpisodePlaylist(pl.Playlist):
         return items[:self._itemLimit]
         
     def _get_suggested_items(self):
+        playedEpisodes = [item for item in self._items if item['playcount']>0]
+        if self.__ignoreSpecials:
+            playedEpisodes = [item for item in playedEpisodes if item['season']>0]
+        playedTvShowIds = set([item['tvshowid'] for item in playedEpisodes])      
         playedTvShows = []
-        playedTvShowIds = set([item['tvshowid'] for item in self._items if item['playcount']>0])      
         for playedTvShowId in playedTvShowIds:
-            lastPlayed = max([item['lastplayed'] for item in self._items if item['tvshowid']==playedTvShowId])
-            playedTvShows.append({'tvshowid':playedTvShowId, 'lastplayed':lastPlayed})
+            showEpisodes = [item for item in self._items if item['tvshowid']==playedTvShowId]
+            if self.__ignoreSpecials:
+                showEpisodes = [item for item in showEpisodes if item['season']>0]
+            #Relevent order in max(lastpayed in set set, min(date(dateadded) with palycount=0 in set set)), lastplayed 
+            lastPlayed = max([item['lastplayed'] for item in showEpisodes])
+            dateAdded = "0000-00-00 00:00:00"
+            setUnplayedEpisodesDateAdded = [helper.date(item['dateadded']) for item in showEpisodes if item['playcount']==0]
+            if len(setUnplayedEpisodesDateAdded) > 0:
+                dateAdded = min(setUnplayedEpisodesDateAdded)
+            playedTvShows.append({'tvshowid':playedTvShowId, 'relevantupdatedate':max([lastPlayed,dateAdded]), 'lastplayed':lastPlayed})
+        playedTvShows = sorted(playedTvShows, key=lambda x: [x['relevantupdatedate'],x['lastplayed']], reverse=True)       
         nextEpisodes = []
-        playedTvShows = sorted(playedTvShows, key=lambda x: x['lastplayed'], reverse=True)
         for playedTvShow in playedTvShows:
-            episodes = [item for item in self._items if item['playcount']==0 and item['season']>0 and item['tvshowid']==playedTvShow['tvshowid']]
-            episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
+            unplayedShowEpisodes = [item for item in self._items if item['tvshowid']==playedTvShow['tvshowid'] and item['playcount']==0]
+            if self.__ignoreSpecials:
+                unplayedShowEpisodes = [item for item in unplayedShowEpisodes if item['season']>0]
+            unplayedShowEpisodes = sorted(unplayedShowEpisodes, key=lambda x: [x['season'],x['episode']], reverse=False)
+            episodes = [item for item in unplayedShowEpisodes if item['season']>0]
             if len(episodes) > 0:
                 nextEpisodes.append(episodes[0])
-            elif not self.__ignoreSpecials:
-                episodes = [item for item in self._items if item['playcount']==0 and item['season']==0 and item['tvshowid']==playedTvShow['tvshowid']]
-                episodes = sorted(episodes, key=lambda x: [x['season'],x['episode']], reverse=False)
+            else:
+                episodes = episodes = [item for item in unplayedShowEpisodes if item['season']==0]
                 if len(episodes) > 0:
                     nextEpisodes.append(episodes[0])
-        return nextEpisodes[:self._itemLimit]
+        #Then when is a not inprogress show: first not played/started episode from the show with the maximum dateadded from the show
+        otherTvShowIds = set([item['tvshowid'] for item in self._items if item['tvshowid'] not in playedTvShowIds])
+        firstEpisodes = []
+        for otherTvShowId in otherTvShowIds:
+            showEpisodes = [item for item in self._items if item['tvshowid']==otherTvShowId]            
+            if self.__ignoreSpecials:
+                showEpisodes = [item for item in showEpisodes if item['season']>0]
+            showEpisodes = sorted(showEpisodes, key=lambda x: [x['season'],x['episode']], reverse=False)            
+            dateAdded = max([item['dateadded'] for item in showEpisodes])
+            episodes = [item for item in showEpisodes if item['season']>0]
+            if len(episodes) > 0:
+                firstEpisodes.append({'episode':episodes[0], 'dateadded':dateAdded})
+            else:
+                episodes = [item for item in showEpisodes if item['season']==0]
+                if len(episodes) > 0:
+                    firstEpisodes.append({'episode':episodes[0], 'dateadded':dateAdded})
+        firstEpisodes = sorted(firstEpisodes, key=lambda x: x['dateadded'], reverse=True)
+        firstEpisodes = [item['episode'] for item in firstEpisodes]
+        #Mix and limit the result
+        result = nextEpisodes + firstEpisodes  
+        return result[:self._itemLimit]
         
     def _get_fech_one_item_video_source(self, details):
         if details:
