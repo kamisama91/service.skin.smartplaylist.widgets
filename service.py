@@ -42,6 +42,8 @@ class Main:
                 self.__collection.add_item(contentType, contentId)
             elif playcount == 0:
                 self.__collection.set_unwatched(contentType, contentId)
+            elif playcount > 0:
+                self.__collection.set_watched(contentType, contentId)
         elif method == 'VideoLibrary.OnRemove':
             self.__collection.remove_item(data['type'], data['id'])
         elif method == 'Player.OnPlay':
