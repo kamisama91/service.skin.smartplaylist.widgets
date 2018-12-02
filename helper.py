@@ -56,9 +56,9 @@ def split_path(path):
     tokens[0] = tokens[0].replace('\\', '\\\\')
     return tokens
     
-    
 def get_real_path(path):
     return xbmc.translatePath(path)
         
 def execute_json_rpc(json):
-    return load_json(unicode(xbmc.executeJSONRPC(json), 'utf-8', errors='ignore'))
+    jsonRpcResult = xbmc.executeJSONRPC(json.encode('utf-8', 'ignore'))
+    return load_json(jsonRpcResult.decode('utf-8', 'ignore'))

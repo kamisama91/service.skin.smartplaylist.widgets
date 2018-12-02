@@ -1,3 +1,6 @@
+v0.4.2
+- Bugfix : json RPC request encoding issue
+
 v0.4.1
 - Bugfix : items were not refreshed after a manual "flag as seen"
 
