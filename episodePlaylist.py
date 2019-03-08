@@ -1,3 +1,5 @@
+import os
+import sys
 import random
 import urllib
 import helper
@@ -7,6 +9,7 @@ class EpisodePlaylist(vpl.VideoPlaylist):
     def __init__(self, alias, path, name, type):
         vpl.VideoPlaylist.__init__(self, alias, path, name, type, 'episode')
         self.__ignoreSpecials = False
+        self.__temporaryEpisodesPlaylistPath = ''
 
     def _read_settings(self, settings):
         vpl.VideoPlaylist._read_settings(self, settings)
@@ -114,6 +117,15 @@ class EpisodePlaylist(vpl.VideoPlaylist):
         result = nextEpisodes + firstEpisodes  
         return result[:self._itemLimit]
         
+    def _fetch_all_items(self):
+        if self.playlistType == 'episodes':
+            fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, self.playlistPath)
+        elif self.playlistType == 'tvshows':
+            self.__create_temporary_episodes_playlist()
+            fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, self.__temporaryEpisodesPlaylistPath)
+            self.__delete_temporary_episodes_playlist()
+        return fetched
+        
     def _get_fech_one_item_directory_source(self, details):
         if details:
             if self.playlistType == 'episodes':
@@ -125,3 +137,24 @@ class EpisodePlaylist(vpl.VideoPlaylist):
                 playlistbase = 'videodb://tvshows/titles/?xsp=%s' %(urllib.quote(playlistfilter))
             return playlistbase
         return None
+        
+    def __create_temporary_episodes_playlist(self):
+        if self.playlistPath != '':
+            sourcePlaylistRealPath = helper.get_real_path(self.playlistPath)
+            temporaryPlaylistPath = "%s/%s.xsp" %(helper.split_path(self.playlistPath)[0], helper.get_uuid())  
+            temporaryPlaylistRealPath = helper.get_real_path(temporaryPlaylistPath)
+            filer = open(sourcePlaylistRealPath, "r")    
+            content = filer.read().replace('<smartplaylist type="tvshows">', '<smartplaylist type="episodes">')
+            filer.close()    
+            filew = open(temporaryPlaylistRealPath, "w")
+            filew.write(content)
+            filew.close()
+            self.__temporaryEpisodesPlaylistPath = temporaryPlaylistPath
+        
+    def __delete_temporary_episodes_playlist(self):
+        if self.__temporaryEpisodesPlaylistPath != '':
+            temporaryRealPath = helper.get_real_path(self.__temporaryEpisodesPlaylistPath)
+            if os.path.exists(temporaryRealPath):
+                os.remove(temporaryRealPath)
+            self.__temporaryEpisodesPlaylistPath = ''
+        

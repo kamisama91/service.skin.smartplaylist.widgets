@@ -16,7 +16,7 @@ class Main:
         timer = 0
         while (not xbmc.abortRequested):
             xbmc.sleep(500)
-            if helper.get_property('service.skin.smartplaylist.widgets.ReloadSettings') == 'true':
+            if helper.get_property('service.skin.smartplaylist.widgets.ReloadSettings') != 'false':
                 helper.set_property('service.skin.smartplaylist.widgets.ReloadSettings', 'false')
                 self.__on_settings_changed_cb()
             if int(self.__settings.getSetting("random_method")) == 0 :
@@ -55,6 +55,7 @@ class Main:
             self.__collection.reload_paylist_content('song')
 
     def __on_settings_changed_cb(self):
+        #helper.log('Load settings')
         self.__settings = helper.get_addon_config()
         self.__collection.update(self.__settings)
         

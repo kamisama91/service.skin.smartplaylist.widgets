@@ -18,7 +18,7 @@ class Playlist():
         self._recentOnlyUnplayed = False
         self._randomOnlyUnplayed = False
         self.__randomUpdateMethod = 0       
-        self._items = self.__fetch_all_items()
+        self._items = self._fetch_all_items()
             
     def update_settings(self, alias, settings):
         self._read_settings(settings)
@@ -36,7 +36,7 @@ class Playlist():
             self.__randomUpdateMethod = int(settings.getSetting("random_method")) == 1
     
     def reload_paylist_content(self):
-        self._items = self.__fetch_all_items()
+        self._items = self._fetch_all_items()
         self.update(['Suggested', 'Recent', 'Random'])
           
     def contains_item(self, id):
@@ -172,20 +172,20 @@ class Playlist():
             helper.clear_property('%s.%s' %(property, item))
 
 
-    def __fetch_all_items(self):
-        return self.__fetch_all_items_from_directory_source(self.playlistPath)
+    def _fetch_all_items(self):
+        return self._fetch_all_items_from_directory_source(self.playlistPath)
     
     def __fetch_one_item(self, id):
         details = self._get_one_item_details_from_database(id)
         fetchPlaylist = self._get_fech_one_item_directory_source(details)
         if fetchPlaylist:
-            result = self.__fetch_all_items_from_directory_source(fetchPlaylist)
+            result = self._fetch_all_items_from_directory_source(fetchPlaylist)
             for file in result:
                 if file['id'] == id:
                     return file
         return None
         
-    def __fetch_all_items_from_directory_source(self, directory):
+    def _fetch_all_items_from_directory_source(self, directory):
         result = []
         response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(directory, self.mediaType, self._get_item_details_fields()))
         files = response.get( "result", {} ).get( "files" )
@@ -194,7 +194,7 @@ class Playlist():
                 if xbmc.abortRequested:
                     break
                 if _file['filetype'] == 'directory':
-                    directoryFiles = self.__fetch_all_items_from_directory_source(_file['file'])
+                    directoryFiles = self._fetch_all_items_from_directory_source(_file['file'])
                     for directoryFile in directoryFiles:
                         id = directoryFile.get('id', -1)
                         if id != -1 and id not in [file['id'] for file in result]:

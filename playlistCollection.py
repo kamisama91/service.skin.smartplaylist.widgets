@@ -4,7 +4,7 @@ import episodePlaylist as epl
 import musicvideoPlaylist as mvpl
 import songPlaylist as spl
 
-MAX_PLAYLIST = 12
+MAX_PLAYLIST = 15
 
 class PlaylistCollection():
     def __init__(self):

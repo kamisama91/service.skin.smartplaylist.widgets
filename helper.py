@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import uuid
 import xbmc
 import xbmcgui
 import xbmcaddon
@@ -15,7 +16,7 @@ WINDOW = xbmcgui.Window(10000)
 throwaway = time.strptime('20110101','%Y%m%d')
 
 def log(txt):
-    file = open(xbmc.translatePath(get_addon_config().getAddonInfo('path')).decode('utf-8') + "/notification.log", "a")
+    file = open(xbmc.translatePath(get_addon_path()).decode('utf-8') + "/notification.log", "a")
     file.write('%s\r\n' %txt)
     file.close()
     
@@ -33,6 +34,9 @@ def is_home_screen():
     
 def get_addon_config():
     return xbmcaddon.Addon()
+    
+def get_addon_path():
+    return xbmcaddon.Addon().getAddonInfo('path')
     
 def current_time():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
@@ -62,3 +66,6 @@ def get_real_path(path):
 def execute_json_rpc(json):
     jsonRpcResult = xbmc.executeJSONRPC(json.encode('utf-8', 'ignore'))
     return load_json(jsonRpcResult.decode('utf-8', 'ignore'))
+
+def get_uuid():
+    return uuid.uuid4().hex
