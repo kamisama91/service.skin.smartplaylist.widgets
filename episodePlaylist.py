@@ -1,5 +1,3 @@
-import os
-import sys
 import random
 import urllib
 import helper
@@ -9,7 +7,6 @@ class EpisodePlaylist(vpl.VideoPlaylist):
     def __init__(self, alias, path, name, type):
         vpl.VideoPlaylist.__init__(self, alias, path, name, type, 'episode')
         self.__ignoreSpecials = False
-        self.__temporaryEpisodesPlaylistPath = ''
 
     def _read_settings(self, settings):
         vpl.VideoPlaylist._read_settings(self, settings)
@@ -121,9 +118,9 @@ class EpisodePlaylist(vpl.VideoPlaylist):
         if self.playlistType == 'episodes':
             fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, self.playlistPath)
         elif self.playlistType == 'tvshows':
-            self.__create_temporary_episodes_playlist()
-            fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, self.__temporaryEpisodesPlaylistPath)
-            self.__delete_temporary_episodes_playlist()
+            temporaryEpisodesPlaylistPath = self.__create_temporary_episodes_playlist(self.playlistPath)
+            fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, temporaryEpisodesPlaylistPath)
+            self.__delete_temporary_episodes_playlist(temporaryEpisodesPlaylistPath)
         return fetched
         
     def _get_fech_one_item_directory_source(self, details):
@@ -138,23 +135,27 @@ class EpisodePlaylist(vpl.VideoPlaylist):
             return playlistbase
         return None
         
-    def __create_temporary_episodes_playlist(self):
-        if self.playlistPath != '':
-            sourcePlaylistRealPath = helper.get_real_path(self.playlistPath)
-            temporaryPlaylistPath = "%s/%s.xsp" %(helper.split_path(self.playlistPath)[0], helper.get_uuid())  
-            temporaryPlaylistRealPath = helper.get_real_path(temporaryPlaylistPath)
-            filer = open(sourcePlaylistRealPath, "r")    
-            content = filer.read().replace('<smartplaylist type="tvshows">', '<smartplaylist type="episodes">')
-            filer.close()    
-            filew = open(temporaryPlaylistRealPath, "w")
-            filew.write(content)
-            filew.close()
-            self.__temporaryEpisodesPlaylistPath = temporaryPlaylistPath
+    def __create_temporary_episodes_playlist(self, sourcePlaylistPath):
+        if sourcePlaylistPath != '':
+            playlistDirectory = helper.split_path(sourcePlaylistPath)[0]
+            temporaryPlaylistName = helper.get_uuid()
+            temporaryPlaylistPath = "%s/%s.xsp" %(playlistDirectory, temporaryPlaylistName)
+            
+            playlistXml = helper.load_xml(sourcePlaylistPath)            
+            playlistXml.getElementsByTagName('smartplaylist')[0].setAttribute('type', 'episodes')
+            playlistXml.getElementsByTagName('name')[0].firstChild.nodeValue = temporaryPlaylistName            
+            for innerPlaylist in [item for item in playlistXml.getElementsByTagName('rule') if item.getAttribute('field')=='playlist']:
+                innerPlaylistName = innerPlaylist.getElementsByTagName('value')[0].firstChild
+                innerPlaylistTemporaryPath = self.__create_temporary_episodes_playlist("%s/%s.xsp" %(playlistDirectory, innerPlaylistName.nodeValue))
+                innerPlaylistName.nodeValue = helper.split_filename(helper.split_path(innerPlaylistTemporaryPath)[1])[0]          
+            helper.save_xml(temporaryPlaylistPath, playlistXml)
+            
+            return temporaryPlaylistPath    
         
-    def __delete_temporary_episodes_playlist(self):
-        if self.__temporaryEpisodesPlaylistPath != '':
-            temporaryRealPath = helper.get_real_path(self.__temporaryEpisodesPlaylistPath)
-            if os.path.exists(temporaryRealPath):
-                os.remove(temporaryRealPath)
-            self.__temporaryEpisodesPlaylistPath = ''
-        
+    def __delete_temporary_episodes_playlist(self, temporaryEpisodesPlaylistPath):
+        if temporaryEpisodesPlaylistPath != '':
+            playlistDirectory = helper.split_path(temporaryEpisodesPlaylistPath)[0]
+            playlistXml = helper.load_xml(temporaryEpisodesPlaylistPath)      
+            for innerPlaylist in [item for item in playlistXml.getElementsByTagName('rule') if item.getAttribute('field')=='playlist'] :
+                self.__delete_temporary_episodes_playlist("%s/%s.xsp" %(playlistDirectory, innerPlaylist.getElementsByTagName('value')[0].firstChild.nodeValue))
+            helper.delete_xml(temporaryEpisodesPlaylistPath)

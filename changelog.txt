@@ -1,3 +1,6 @@
+v0.4.3
+- Performance : reduce initial load time of tvshows playlist
+
 v0.4.2
 - Bugfix : json RPC request encoding issue
 

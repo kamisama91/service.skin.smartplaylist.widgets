@@ -51,6 +51,17 @@ def load_json(json):
 def load_xml(path):
     return parse(get_real_path(path))
     
+def save_xml(path, xmlDocument):
+    file_handle = open(get_real_path(path),"wb")
+    xmlDocument.writexml(file_handle)
+    file_handle.close()
+    
+def delete_xml(path):
+    if path != '':
+        realPath = get_real_path(path)
+        if os.path.exists(realPath):
+            os.remove(realPath)
+
 def split_path(path):
     splitPath = os.path.split(path)
     tokens = []
@@ -59,6 +70,9 @@ def split_path(path):
     tokens[0] = tokens[0] + ('/' if '/' in tokens[0] else '\\')
     tokens[0] = tokens[0].replace('\\', '\\\\')
     return tokens
+    
+def split_filename(filename):
+    return os.path.splitext(filename)
     
 def get_real_path(path):
     return xbmc.translatePath(path)
