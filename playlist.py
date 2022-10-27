@@ -142,7 +142,7 @@ class Playlist():
         if item:
             helper.set_property("%s.DBID"         % property, str(item.get('id')))
             helper.set_property("%s.File"         % property, item.get('file',''))
-            helper.set_property("%s.Title"        % property, item.get('title'))            
+            helper.set_property("%s.Title"        % property, item.get('title'))
         else:
             helper.set_property("%s.Title"        % property, '')
 
@@ -160,7 +160,7 @@ class Playlist():
     def _clear_all_items_Properties(self, mode):        
         self._clear_all_items_Properties_from_position(mode, 1)
     
-    def _clear_all_items_Properties_from_position(self, mode, position):        
+    def _clear_all_items_Properties_from_position(self, mode, position):
         count = position
         while count <= MAX_ITEM:
             property = '%s#%s.%s' %(self._alias, mode, count)
@@ -191,8 +191,6 @@ class Playlist():
         files = response.get( "result", {} ).get( "files" )
         if files:
             for _file in files:
-                if xbmc.abortRequested:
-                    break
                 if _file['filetype'] == 'directory':
                     directoryFiles = self._fetch_all_items_from_directory_source(_file['file'])
                     for directoryFile in directoryFiles:

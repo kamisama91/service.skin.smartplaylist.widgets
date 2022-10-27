@@ -5,8 +5,8 @@ import playlistCollection as plc
 class Main:
     def __init__(self):
         self.__settings = None
-        self.__collection = plc.PlaylistCollection()
         self.__monitor = WidgetsMonitor(onNotificationCallback = self.__on_notification_cb, onSettingsChangedCallback = self.__on_settings_changed_cb)
+        self.__collection = plc.PlaylistCollection()
         helper.set_property('service.skin.smartplaylist.widgets.ReloadSettings', 'false')
         self.__on_settings_changed_cb()        
         self.__daemon()
@@ -14,7 +14,7 @@ class Main:
     def __daemon(self):
         home_update = False
         timer = 0
-        while (not xbmc.abortRequested):
+        while (not self.__monitor.abortRequested()):
             xbmc.sleep(500)
             if helper.get_property('service.skin.smartplaylist.widgets.ReloadSettings') != 'false':
                 helper.set_property('service.skin.smartplaylist.widgets.ReloadSettings', 'false')

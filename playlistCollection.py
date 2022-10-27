@@ -46,8 +46,8 @@ class PlaylistCollection():
         for playlist in [playlist for playlist in self.__playlists if playlist.playlistPath not in newPlaylistPath]:       
             playlist.clean()
             self.__playlists.remove(playlist)
-        for existingPlaylists in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath in [playlist['path'] for playlist in configPlaylists]]:
-            existingPlaylist.clean()
+        for playlist in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath in [playlist['path'] for playlist in configPlaylists]]:
+            playlist.clean()
         for playlist in configPlaylists:
             existingPlaylists = [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath == playlist['path']]
             if len(existingPlaylists) > 0:

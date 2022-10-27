@@ -1,5 +1,5 @@
 import random
-import urllib
+import urllib.parse
 import helper
 import videoPlaylist as vpl
 
@@ -128,10 +128,10 @@ class EpisodePlaylist(vpl.VideoPlaylist):
             if self.playlistType == 'episodes':
                 filepath = helper.split_path(details['file'])
                 playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.playlistName, filepath[0], filepath[1])
-                playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.quote(playlistfilter))
+                playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.parse.quote(playlistfilter))
             elif self.playlistType == 'tvshows':
                 playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"title","operator":"is","value":["%s"]}]},"type":"tvshows"}' %(self.playlistName, details['showtitle'])
-                playlistbase = 'videodb://tvshows/titles/?xsp=%s' %(urllib.quote(playlistfilter))
+                playlistbase = 'videodb://tvshows/titles/?xsp=%s' %(urllib.parse.quote(playlistfilter))
             return playlistbase
         return None
         
@@ -141,16 +141,16 @@ class EpisodePlaylist(vpl.VideoPlaylist):
             temporaryPlaylistName = helper.get_uuid()
             temporaryPlaylistPath = "%s/%s.xsp" %(playlistDirectory, temporaryPlaylistName)
             
-            playlistXml = helper.load_xml(sourcePlaylistPath)            
+            playlistXml = helper.load_xml(sourcePlaylistPath)
             playlistXml.getElementsByTagName('smartplaylist')[0].setAttribute('type', 'episodes')
-            playlistXml.getElementsByTagName('name')[0].firstChild.nodeValue = temporaryPlaylistName            
+            playlistXml.getElementsByTagName('name')[0].firstChild.nodeValue = temporaryPlaylistName
             for innerPlaylist in [item for item in playlistXml.getElementsByTagName('rule') if item.getAttribute('field')=='playlist']:
                 innerPlaylistName = innerPlaylist.getElementsByTagName('value')[0].firstChild
                 innerPlaylistTemporaryPath = self.__create_temporary_episodes_playlist("%s/%s.xsp" %(playlistDirectory, innerPlaylistName.nodeValue))
-                innerPlaylistName.nodeValue = helper.split_filename(helper.split_path(innerPlaylistTemporaryPath)[1])[0]          
+                innerPlaylistName.nodeValue = helper.split_filename(helper.split_path(innerPlaylistTemporaryPath)[1])[0]
             helper.save_xml(temporaryPlaylistPath, playlistXml)
             
-            return temporaryPlaylistPath    
+            return temporaryPlaylistPath
         
     def __delete_temporary_episodes_playlist(self, temporaryEpisodesPlaylistPath):
         if temporaryEpisodesPlaylistPath != '':

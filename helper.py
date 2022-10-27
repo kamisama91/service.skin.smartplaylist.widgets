@@ -4,6 +4,7 @@ import time
 import uuid
 import xbmc
 import xbmcgui
+import xbmcvfs
 import xbmcaddon
 from xml.dom.minidom import parse
 if sys.version_info < (2, 7):
@@ -16,7 +17,7 @@ WINDOW = xbmcgui.Window(10000)
 throwaway = time.strptime('20110101','%Y%m%d')
 
 def log(txt):
-    file = open(xbmc.translatePath(get_addon_path()).decode('utf-8') + "/notification.log", "a")
+    file = open(xbmcvfs.translatePath(get_addon_path()) + "/notification.log", "a")
     file.write('%s\r\n' %txt)
     file.close()
     
@@ -25,7 +26,7 @@ def get_property(property):
     
 def set_property(property, value):
     WINDOW.setProperty(property, value)
-
+    
 def clear_property(property):
     WINDOW.clearProperty(property)
     
@@ -52,7 +53,7 @@ def load_xml(path):
     return parse(get_real_path(path))
     
 def save_xml(path, xmlDocument):
-    file_handle = open(get_real_path(path),"wb")
+    file_handle = open(get_real_path(path), "w")
     xmlDocument.writexml(file_handle)
     file_handle.close()
     
@@ -61,7 +62,7 @@ def delete_xml(path):
         realPath = get_real_path(path)
         if os.path.exists(realPath):
             os.remove(realPath)
-
+    
 def split_path(path):
     splitPath = os.path.split(path)
     tokens = []
@@ -75,11 +76,11 @@ def split_filename(filename):
     return os.path.splitext(filename)
     
 def get_real_path(path):
-    return xbmc.translatePath(path)
-        
+    return xbmcvfs.translatePath(path)
+    
 def execute_json_rpc(json):
-    jsonRpcResult = xbmc.executeJSONRPC(json.encode('utf-8', 'ignore'))
-    return load_json(jsonRpcResult.decode('utf-8', 'ignore'))
-
+    jsonRpcResult = xbmc.executeJSONRPC(json)
+    return load_json(jsonRpcResult)
+    
 def get_uuid():
     return uuid.uuid4().hex

@@ -1,3 +1,4 @@
+import helper
 import playlist as pl
 
 class VideoPlaylist(pl.Playlist):
@@ -11,8 +12,9 @@ class VideoPlaylist(pl.Playlist):
     
     def start_playing(self, id):
         for item in [item for item in self._items if item['id']==id]:
-            item['resume']['position'] = 1   
+            item['resume']['position'] = 1
         pl.Playlist.start_playing(self, id)
             
     def _get_item_details_fields(self):
         return  pl.Playlist._get_item_details_fields(self) + ', "resume"'
+

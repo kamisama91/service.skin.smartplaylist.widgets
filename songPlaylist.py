@@ -1,5 +1,5 @@
 import random
-import urllib
+import urllib.parse
 import helper
 import audioPlaylist as apl
 
@@ -70,13 +70,13 @@ class SongPlaylist(apl.AudioPlaylist):
             if self.playlistType == 'songs':
                 filepath = helper.split_path(details['file'])
                 playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"songs"}' %(self.playlistName, filepath[0], filepath[1])
-                playlistbase = 'musicdb://songs/?xsp=%s' %(urllib.quote(playlistfilter))
+                playlistbase = 'musicdb://songs/?xsp=%s' %(urllib.parse.quote(playlistfilter))
             elif self.playlistType == 'albums':
                 playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"album","operator":"is","value":["%s"]},{"field":"artist","operator":"is","value":["%s"]}]},"type":"albums"}' %(self.playlistName, details['album'], details['artist'][0])
-                playlistbase = 'musicdb://albums/?xsp=%s' %(urllib.quote(playlistfilter))
+                playlistbase = 'musicdb://albums/?xsp=%s' %(urllib.parse.quote(playlistfilter))
             elif self.playlistType == 'artists':
                 playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"artist","operator":"is","value":["%s"]}]},"type":"artists"}' %(self.playlistName, details['artist'][0])
-                playlistbase = 'musicdb://artists/?xsp=%s' %(urllib.quote(playlistfilter))
+                playlistbase = 'musicdb://artists/?xsp=%s' %(urllib.parse.quote(playlistfilter))
             return playlistbase
         return None
         

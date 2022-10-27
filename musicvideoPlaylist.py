@@ -1,5 +1,5 @@
 import random
-import urllib
+import urllib.parse
 import helper
 import videoPlaylist as vpl
 
@@ -69,6 +69,6 @@ class MusicVideoPlaylist(vpl.VideoPlaylist):
         if details:
             filepath = helper.split_path(details['file'])            
             playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"musicvideos"}' %(self.playlistName, filepath[0], filepath[1])
-            playlistbase = 'videodb://musicvideos/titles/?xsp=%s' %urllib.quote(playlistfilter)
+            playlistbase = 'videodb://musicvideos/titles/?xsp=%s' %urllib.parse.quote(playlistfilter)
             return playlistbase
         return None
