@@ -7,10 +7,7 @@ import xbmcgui
 import xbmcvfs
 import xbmcaddon
 from xml.dom.minidom import parse
-if sys.version_info < (2, 7):
-    import simplejson
-else:
-    import json as simplejson
+import json as simplejson
 
 WINDOW = xbmcgui.Window(10000)
 # This is a throwaway variable to deal with a python bug
@@ -18,8 +15,11 @@ throwaway = time.strptime('20110101','%Y%m%d')
 
 def log(txt):
     file = open(xbmcvfs.translatePath(get_addon_path()) + "/notification.log", "a")
-    file.write('%s\r\n' %txt)
+    file.write('%s\r' %txt)
     file.close()
+    
+def notify(message, duration):
+    xbmc.executebuiltin('Notification(%s,%s,%d,%s)' %(get_addon_name(), message, 1000*duration, xbmcvfs.translatePath(get_addon_path())+"/icon.png"))
     
 def get_property(property):
     return WINDOW.getProperty(property)
@@ -39,9 +39,15 @@ def get_addon_config():
 def get_addon_path():
     return xbmcaddon.Addon().getAddonInfo('path')
     
+def get_addon_name():
+    return xbmcaddon.Addon().getAddonInfo('name')
+    
+def current_timestamp():
+    return time.time()
+    
 def current_time():
-    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_timestamp()))
+    
 def date(datetimeString):
     datetimeObject = time.strptime(datetimeString, "%Y-%m-%d %H:%M:%S")
     return time.strftime("%Y-%m-%d 00:00:00", datetimeObject)
@@ -78,9 +84,13 @@ def split_filename(filename):
 def get_real_path(path):
     return xbmcvfs.translatePath(path)
     
-def execute_json_rpc(json):
-    jsonRpcResult = xbmc.executeJSONRPC(json)
-    return load_json(jsonRpcResult)
+def execute_json_rpc(request):
+    t1 = current_timestamp()
+    jsonRpcResult = xbmc.executeJSONRPC(request)
+    response = load_json(jsonRpcResult)
+    t2 = current_timestamp()
+    #log("request: %s\rresponse: %s\rduration: %d seconds\r" %(request, response, (t2-t1)))
+    return response
     
 def get_uuid():
     return uuid.uuid4().hex

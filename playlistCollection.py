@@ -1,3 +1,4 @@
+import threading
 import helper
 import moviePlaylist as mpl
 import episodePlaylist as epl
@@ -32,9 +33,12 @@ class PlaylistCollection():
             playlist = spl.SongPlaylist(alias, path, playlistName, playlistType)
         if playlist:
             self.__playlists.append(playlist)
+            playlist.reload_paylist_content()
             playlist.update_settings(alias, settings)
-
+    
     def update(self, settings):
+        t1 = helper.current_timestamp()
+        threads = []
         configPlaylists = []
         count = 1
         while count <= MAX_PLAYLIST:
@@ -43,7 +47,7 @@ class PlaylistCollection():
                 configPlaylists.append({'alias': property, 'path': helper.get_property(property)})
             count += 1
         newPlaylistPath = [playlist['path'] for playlist in configPlaylists]
-        for playlist in [playlist for playlist in self.__playlists if playlist.playlistPath not in newPlaylistPath]:       
+        for playlist in [playlist for playlist in self.__playlists if playlist.playlistPath not in newPlaylistPath]:
             playlist.clean()
             self.__playlists.remove(playlist)
         for playlist in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath in [playlist['path'] for playlist in configPlaylists]]:
@@ -54,8 +58,14 @@ class PlaylistCollection():
                 for existingPlaylist in existingPlaylists:
                     existingPlaylist.update_settings(playlist['alias'], settings)
             else:
-                self.__register(playlist['alias'], playlist['path'], settings)
-
+                threads.append(threading.Thread(target=self.__register, args=(playlist['alias'], playlist['path'], settings, )))
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        t2 = helper.current_timestamp()
+        #helper.notify("%s: %d seconds" %("Loaded", t2-t1), 2)
+    
     def update_all_playlists(self, modes):
         for playlist in [playlist for playlist in self.__playlists]:
             playlist.update(modes)
@@ -84,7 +94,7 @@ class PlaylistCollection():
             
     def set_unwatched(self, type, id):
         for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.set_unwatched(id)      
+            playlist.set_unwatched(id)
     
     def start_playing(self, type, id):
         for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:

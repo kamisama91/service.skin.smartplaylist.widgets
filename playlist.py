@@ -5,21 +5,21 @@ MAX_ITEM = 20
 
 class Playlist():
     def __init__(self, alias, path, name, playlistType, itemType, mediaType):
-        self._alias = None
-        self.playlistPath = path 
-        self.playlistName = name        
-        self.playlistType = playlistType        #movies/episodes/tvshows/musicvideos/songs/albums/artists/mixed        
+        self._alias = alias
+        self.playlistPath = path
+        self.playlistName = name
+        self.playlistType = playlistType        #movies/episodes/tvshows/musicvideos/songs/albums/artists/mixed
         self.itemType = itemType                #movie/episode/musicvideo/song
         self.mediaType = mediaType              #video/music/pictures/files/programs
+        self._items = []
         self.__enableSuggested = False
         self.__enableRecent = False
         self.__enableRandom = False
         self._itemLimit = 0
         self._recentOnlyUnplayed = False
         self._randomOnlyUnplayed = False
-        self.__randomUpdateMethod = 0       
-        self._items = self._fetch_all_items()
-            
+        self.__randomUpdateMethod = 0
+     
     def update_settings(self, alias, settings):
         self._read_settings(settings)
         self._alias = alias
@@ -31,20 +31,23 @@ class Playlist():
             self.__enableRecent = settings.getSetting("recent_enable") == 'true'
             self.__enableRandom = settings.getSetting("random_enable") == 'true'
             self._itemLimit = min([MAX_ITEM, max([0, int(settings.getSetting("nb_item"))])])
-            self._recentOnlyUnplayed = settings.getSetting("recent_unplayed") == 'true'            
+            self._recentOnlyUnplayed = settings.getSetting("recent_unplayed") == 'true'
             self._randomOnlyUnplayed = settings.getSetting("random_unplayed") == 'true'
             self.__randomUpdateMethod = int(settings.getSetting("random_method")) == 1
     
     def reload_paylist_content(self):
+        t1 = helper.current_timestamp()
         self._items = self._fetch_all_items()
         self.update(['Suggested', 'Recent', 'Random'])
-          
+        t2 = helper.current_timestamp()
+        #helper.notify("%s: %d seconds" %(self.playlistName, t2-t1), 2)
+     
     def contains_item(self, id):
         return len([item for item in self._items if item['id']==id]) > 0
         
     def add_item(self, id):
         if not self.contains_item(id):
-            item = self.__fetch_one_item(id)
+            item = self._fetch_one_item(id)
             if item:
                 self._items.append(item)
                 self.update(['Suggested', 'Recent', 'Random'] if self.__randomUpdateMethod else ['Suggested', 'Recent'])
@@ -137,7 +140,7 @@ class Playlist():
                 property = '%s#%s.%s' %(self._alias, mode, count)
                 self._set_one_item_properties(property, item)
                 count = count + 1
-            
+     
     def _set_one_item_properties(self, property, item):
         if item:
             helper.set_property("%s.DBID"         % property, str(item.get('id')))
@@ -145,8 +148,7 @@ class Playlist():
             helper.set_property("%s.Title"        % property, item.get('title'))
         else:
             helper.set_property("%s.Title"        % property, '')
-
-
+    
     def clean(self):
         if self._alias:
             self._clear_playlist_properties()
@@ -170,44 +172,22 @@ class Playlist():
     def _clear_one_item_properties(self, property):
         for item in ['DBID', 'Title', 'File']:
             helper.clear_property('%s.%s' %(property, item))
-
-
-    def _fetch_all_items(self):
-        return self._fetch_all_items_from_directory_source(self.playlistPath)
-    
-    def __fetch_one_item(self, id):
-        details = self._get_one_item_details_from_database(id)
-        fetchPlaylist = self._get_fech_one_item_directory_source(details)
-        if fetchPlaylist:
-            result = self._fetch_all_items_from_directory_source(fetchPlaylist)
-            for file in result:
-                if file['id'] == id:
-                    return file
-        return None
-        
-    def _fetch_all_items_from_directory_source(self, directory):
-        result = []
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(directory, self.mediaType, self._get_item_details_fields()))
-        files = response.get( "result", {} ).get( "files" )
-        if files:
-            for _file in files:
-                if _file['filetype'] == 'directory':
-                    directoryFiles = self._fetch_all_items_from_directory_source(_file['file'])
-                    for directoryFile in directoryFiles:
-                        id = directoryFile.get('id', -1)
-                        if id != -1 and id not in [file['id'] for file in result]:
-                            result.append(directoryFile)
-                else:
-                    id = _file.get('id', -1)
-                    if id != -1 and id not in [file['id'] for file in result]:
-                        result.append(_file)
-        return result
     
     def _get_item_details_fields(self):
          return '"file", "title", "lastplayed", "playcount"'
-
+    
     def _get_one_item_details_from_database(self, id):
         return None
-  
-    def _get_fech_one_item_directory_source(self, fileId):
-        return None
+    
+    def _fetch_all_items(self):
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(self.playlistPath, self.mediaType, self._get_item_details_fields()))
+        files = response.get( "result", {} ).get("files", [])
+        return [file for file in files if file['filetype'] != 'directory' and file.get('id', -1) != -1]
+    
+    def _fetch_one_item(self, id):
+        item = self._get_one_item_details_from_database(id)
+        return item if item and self._is_item_in_playlist(item) else None
+    
+    def _is_item_in_playlist(self, item):
+        return False
+

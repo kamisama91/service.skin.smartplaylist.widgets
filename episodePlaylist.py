@@ -1,4 +1,5 @@
 import random
+import threading
 import urllib.parse
 import helper
 import videoPlaylist as vpl
@@ -7,6 +8,7 @@ class EpisodePlaylist(vpl.VideoPlaylist):
     def __init__(self, alias, path, name, type):
         vpl.VideoPlaylist.__init__(self, alias, path, name, type, 'episode')
         self.__ignoreSpecials = False
+        self.__lock = threading.Lock()
 
     def _read_settings(self, settings):
         vpl.VideoPlaylist._read_settings(self, settings)
@@ -38,29 +40,19 @@ class EpisodePlaylist(vpl.VideoPlaylist):
     def _getTvShowCount(self):
         showIds = set([item['tvshowid'] for item in self._items])
         return len(showIds)
-
-    def _get_item_details_fields(self):
-        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "tvshowid", "showtitle", "season", "episode"'
-
-    def _get_one_item_details_from_database(self, id):
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodeDetails", "params": {"properties": [%s], "episodeid":%s }, "id": 1}' %(self._get_item_details_fields(),id))
-        details = response.get( 'result', {} ).get( 'episodedetails', None )
-        if details:
-            details['id'] = details['episodeid']
-        return details
-        
+    
     def _get_random_items(self):
         items = [item for item in self._items if item['season']>0] if self.__ignoreSpecials else [item for item in self._items]
         items = [item for item in items if item['playcount']==0] if self._randomOnlyUnplayed else [item for item in items]
         random.shuffle(items)
         return items[:self._itemLimit]
-        
+    
     def _get_recent_items(self):
         items = [item for item in self._items if item['season']>0] if self.__ignoreSpecials else [item for item in self._items]
         items = [item for item in items if item['playcount']==0] if self._recentOnlyUnplayed else [item for item in items]
         items = sorted(items, key=lambda x: x['dateadded'], reverse=True)
         return items[:self._itemLimit]
-        
+    
     def _get_suggested_items(self):
         playedEpisodes = [item for item in self._items if item['playcount']>0]
         if self.__ignoreSpecials:
@@ -113,49 +105,50 @@ class EpisodePlaylist(vpl.VideoPlaylist):
         #Mix and limit the result
         result = nextEpisodes + firstEpisodes  
         return result[:self._itemLimit]
-        
-    def _fetch_all_items(self):
-        if self.playlistType == 'episodes':
-            fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, self.playlistPath)
-        elif self.playlistType == 'tvshows':
-            temporaryEpisodesPlaylistPath = self.__create_temporary_episodes_playlist(self.playlistPath)
-            fetched = vpl.VideoPlaylist._fetch_all_items_from_directory_source(self, temporaryEpisodesPlaylistPath)
-            self.__delete_temporary_episodes_playlist(temporaryEpisodesPlaylistPath)
-        return fetched
-        
-    def _get_fech_one_item_directory_source(self, details):
+    
+    def _get_item_details_fields(self):
+        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "tvshowid", "showtitle", "season", "episode"'
+    
+    def _get_one_item_details_from_database(self, id):
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodeDetails", "params": {"properties": [%s], "episodeid":%s }, "id": 1}' %(self._get_item_details_fields(),id))
+        details = response.get( 'result',{} ).get('episodedetails', None )
         if details:
-            if self.playlistType == 'episodes':
-                filepath = helper.split_path(details['file'])
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.playlistName, filepath[0], filepath[1])
-                playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.parse.quote(playlistfilter))
-            elif self.playlistType == 'tvshows':
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"title","operator":"is","value":["%s"]}]},"type":"tvshows"}' %(self.playlistName, details['showtitle'])
-                playlistbase = 'videodb://tvshows/titles/?xsp=%s' %(urllib.parse.quote(playlistfilter))
-            return playlistbase
-        return None
-        
-    def __create_temporary_episodes_playlist(self, sourcePlaylistPath):
-        if sourcePlaylistPath != '':
-            playlistDirectory = helper.split_path(sourcePlaylistPath)[0]
-            temporaryPlaylistName = helper.get_uuid()
-            temporaryPlaylistPath = "%s/%s.xsp" %(playlistDirectory, temporaryPlaylistName)
-            
-            playlistXml = helper.load_xml(sourcePlaylistPath)
-            playlistXml.getElementsByTagName('smartplaylist')[0].setAttribute('type', 'episodes')
-            playlistXml.getElementsByTagName('name')[0].firstChild.nodeValue = temporaryPlaylistName
-            for innerPlaylist in [item for item in playlistXml.getElementsByTagName('rule') if item.getAttribute('field')=='playlist']:
-                innerPlaylistName = innerPlaylist.getElementsByTagName('value')[0].firstChild
-                innerPlaylistTemporaryPath = self.__create_temporary_episodes_playlist("%s/%s.xsp" %(playlistDirectory, innerPlaylistName.nodeValue))
-                innerPlaylistName.nodeValue = helper.split_filename(helper.split_path(innerPlaylistTemporaryPath)[1])[0]
-            helper.save_xml(temporaryPlaylistPath, playlistXml)
-            
-            return temporaryPlaylistPath
-        
-    def __delete_temporary_episodes_playlist(self, temporaryEpisodesPlaylistPath):
-        if temporaryEpisodesPlaylistPath != '':
-            playlistDirectory = helper.split_path(temporaryEpisodesPlaylistPath)[0]
-            playlistXml = helper.load_xml(temporaryEpisodesPlaylistPath)      
-            for innerPlaylist in [item for item in playlistXml.getElementsByTagName('rule') if item.getAttribute('field')=='playlist'] :
-                self.__delete_temporary_episodes_playlist("%s/%s.xsp" %(playlistDirectory, innerPlaylist.getElementsByTagName('value')[0].firstChild.nodeValue))
-            helper.delete_xml(temporaryEpisodesPlaylistPath)
+            details['id'] = details['episodeid']
+        return details
+    
+    def _fetch_all_items(self):
+        if self.playlistType == 'tvshows':
+            response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(self.playlistPath, self.mediaType, self._get_item_details_fields()))
+            tvshowids = [file['id'] for file in response.get("result", {}).get( "files", []) if file['filetype'] == 'directory' and file.get('id', -1) != -1]
+            fetched = list()
+            threads = []
+            for tvshowid in tvshowids:
+                threads.append(threading.Thread(target=self._fetch_all_items_for_one_tvshow, args=(tvshowid, fetched, )))
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            return fetched
+        else:
+            return vpl.VideoPlaylist._fetch_all_items(self)
+    
+    
+    def _fetch_all_items_for_one_tvshow(self, tvshowid, fetched):
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodes", "params": {"tvshowid": %d, "properties": [%s]}, "id": 1}' %(tvshowid, self._get_item_details_fields()))
+        episodes = response.get('result', {}).get('episodes', [])
+        with self.__lock:
+            for episode in [episode for episode in episodes if episode.get('episodeid', -1) != -1]:
+                episode['id'] = episode['episodeid']
+                fetched.append(episode)
+
+    def _is_item_in_playlist(self, item):
+        if self.playlistType == 'tvshows':
+            response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(self.playlistPath, self.mediaType, self._get_item_details_fields()))
+            files = response.get("result", {}).get("files",[])
+            return len([file for file in files if file['filetype'] == 'directory' and file.get('id', -1) == item['tvshowid']]) > 0
+        else:
+            filepath = helper.split_path(details['file'])
+            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.playlistName, filepath[0], filepath[1])
+            playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.parse.quote(playlistfilter))
+            response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(playlistbase, self.mediaType, self._get_item_details_fields()))
+            return len(response.get("result",{} ).get("files", [])) > 0

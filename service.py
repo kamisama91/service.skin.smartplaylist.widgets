@@ -36,8 +36,8 @@ class Main:
     def __on_notification_cb(self, method, data):
         if method in ['VideoLibrary.OnUpdate', 'AudioLibrary.OnUpdate']:
             contentId = data.get('item', data)['id']
-            contentType =  data.get('item', data)['type']
-            playcount = data.get('playcount', -1)           
+            contentType = data.get('item', data)['type']
+            playcount = data.get('playcount', -1)
             if not self.__collection.contains_item(contentType, contentId):
                 self.__collection.add_item(contentType, contentId)
             elif playcount == 0:
@@ -53,12 +53,11 @@ class Main:
         elif method == 'AudioLibrary.OnCleanFinished':
             #AudioLibrary.OnRemove is not accurate...
             self.__collection.reload_paylist_content('song')
-
+    
     def __on_settings_changed_cb(self):
-        #helper.log('Load settings')
         self.__settings = helper.get_addon_config()
         self.__collection.update(self.__settings)
-        
+
 class WidgetsMonitor(xbmc.Monitor):
     def __init__(self, *args, **kwargs):
         self.__onNotificationCallback = kwargs['onNotificationCallback']

@@ -1,3 +1,6 @@
+v0.5.1
+- Multithreading for loading playlist content
+
 v0.5.0
 - Python3 for Matrix
 

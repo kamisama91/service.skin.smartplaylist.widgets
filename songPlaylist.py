@@ -41,17 +41,7 @@ class SongPlaylist(apl.AudioPlaylist):
     def _getAlbumsCount(self):
         albumIds = set([item['albumid'] for item in self._items])
         return len(albumIds)
-
-    def _get_item_details_fields(self):
-        return apl.AudioPlaylist._get_item_details_fields(self) + ', "artistid", "artist", "albumid", "album", "thumbnail", "fanart"'
-
-    def _get_one_item_details_from_database(self, id):
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "AudioLibrary.GetSongDetails", "params": {"properties": [%s], "songid":%s }, "id": 1}' %(self._get_item_details_fields(),id))
-        details = response.get( 'result', {} ).get( 'songdetails', None )
-        if details:
-            details['id'] = details['songid']
-        return details
-        
+    
     def _get_random_items(self):
         items = [item for item in self._items if item['playcount']==0] if self._randomOnlyUnplayed else [item for item in self._items]
         random.shuffle(items)
@@ -64,19 +54,27 @@ class SongPlaylist(apl.AudioPlaylist):
         
     def _get_suggested_items(self):
         return self._get_recent_items()
-        
-    def _get_fech_one_item_directory_source(self, details):
+    
+    def _get_item_details_fields(self):
+        return apl.AudioPlaylist._get_item_details_fields(self) + ', "artistid", "artist", "albumid", "album", "thumbnail", "fanart"'
+
+    def _get_one_item_details_from_database(self, id):
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "AudioLibrary.GetSongDetails", "params": {"properties": [%s], "songid":%s }, "id": 1}' %(self._get_item_details_fields(),id))
+        details = response.get( 'result', {} ).get( 'songdetails', None )
         if details:
-            if self.playlistType == 'songs':
-                filepath = helper.split_path(details['file'])
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"songs"}' %(self.playlistName, filepath[0], filepath[1])
-                playlistbase = 'musicdb://songs/?xsp=%s' %(urllib.parse.quote(playlistfilter))
-            elif self.playlistType == 'albums':
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"album","operator":"is","value":["%s"]},{"field":"artist","operator":"is","value":["%s"]}]},"type":"albums"}' %(self.playlistName, details['album'], details['artist'][0])
-                playlistbase = 'musicdb://albums/?xsp=%s' %(urllib.parse.quote(playlistfilter))
-            elif self.playlistType == 'artists':
-                playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"artist","operator":"is","value":["%s"]}]},"type":"artists"}' %(self.playlistName, details['artist'][0])
-                playlistbase = 'musicdb://artists/?xsp=%s' %(urllib.parse.quote(playlistfilter))
-            return playlistbase
-        return None
-        
+            details['id'] = details['songid']
+        return details
+    
+    def _is_item_in_playlist(self, item):
+        if self.playlistType == 'songs':
+            filepath = helper.split_path(details['file'])
+            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"songs"}' %(self.playlistName, filepath[0], filepath[1])
+            playlistbase = 'musicdb://songs/?xsp=%s' %(urllib.parse.quote(playlistfilter))
+        elif self.playlistType == 'albums':
+            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"album","operator":"is","value":["%s"]},{"field":"artist","operator":"is","value":["%s"]}]},"type":"albums"}' %(self.playlistName, details['album'], details['artist'][0])
+            playlistbase = 'musicdb://albums/?xsp=%s' %(urllib.parse.quote(playlistfilter))
+        elif self.playlistType == 'artists':
+            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"artist","operator":"is","value":["%s"]}]},"type":"artists"}' %(self.playlistName, details['artist'][0])
+            playlistbase = 'musicdb://artists/?xsp=%s' %(urllib.parse.quote(playlistfilter))
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(playlistbase, self.mediaType, self._get_item_details_fields()))
+        return len(response.get("result", {} ).get("files",[])) > 0

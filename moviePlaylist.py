@@ -31,27 +31,17 @@ class MoviePlaylist(vpl.VideoPlaylist):
     def _getSetCount(self):
         setIds = set([item['setid'] for item in self._items if item['setid']>0])
         return len(setIds)
-        
-    def _get_item_details_fields(self):
-        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "setid", "set", "year"'
-   
-    def _get_one_item_details_from_database(self, id):
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovieDetails", "params": {"properties": [%s], "movieid":%s }, "id": 1}' %(self._get_item_details_fields(), id))
-        details = response.get( 'result', {} ).get( 'moviedetails', None )
-        if details:
-            details['id'] = details['movieid']
-        return details
     
     def _get_random_items(self):
         items = [item for item in self._items if item['playcount']==0] if self._randomOnlyUnplayed else [item for item in self._items]
         random.shuffle(items)
         return items[:self._itemLimit]
-        
+    
     def _get_recent_items(self):
         items = [item for item in self._items if item['playcount']==0] if self._recentOnlyUnplayed else [item for item in self._items]
         items = sorted(items, key=lambda x: x['dateadded'], reverse=True)
         return items[:self._itemLimit]
-        
+    
     def _get_suggested_items(self):
         unplayedItems = [item for item in self._items if item['playcount']==0]
         #Get all started movie form last played to first played
@@ -92,12 +82,21 @@ class MoviePlaylist(vpl.VideoPlaylist):
         #Mix and limit the result
         items = startedMovies + nextMoviesFromStartedSets + otherItems
         return items[:self._itemLimit]
-
-    def _get_fech_one_item_directory_source(self, details):
+    
+    def _get_item_details_fields(self):
+        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "setid", "set", "year"'
+    
+    def _get_one_item_details_from_database(self, id):
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovieDetails", "params": {"properties": [%s], "movieid":%s }, "id": 1}' %(self._get_item_details_fields(), id))
+        details = response.get('result', {} ).get('moviedetails', None )
         if details:
-            filepath = helper.split_path(details['file'])
-            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"movies"}' %(self.playlistName, filepath[0], filepath[1])
-            playlistbase = 'videodb://movies/titles/?xsp=%s' %urllib.parse.quote(playlistfilter)
-            return playlistbase
-        return None
+            details['id'] = details['movieid']
+        return details
+    
+    def _is_item_in_playlist(self, item):
+        filepath = helper.split_path(item['file'])
+        playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"movies"}' %(self.playlistName, filepath[0], filepath[1])
+        playlistbase = 'videodb://movies/titles/?xsp=%s' %urllib.parse.quote(playlistfilter)
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(playlistbase, self.mediaType, self._get_item_details_fields()))
+        return len(response.get( "result",{}).get("files", [])) > 0
 

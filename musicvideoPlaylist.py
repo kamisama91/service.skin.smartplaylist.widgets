@@ -35,16 +35,6 @@ class MusicVideoPlaylist(vpl.VideoPlaylist):
                 if artist not in allArtists:
                     allArtists.append(artist)
         return len(allArtists)
-        
-    def _get_item_details_fields(self):
-        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "artist", "fanart", "thumbnail"'
-   
-    def _get_one_item_details_from_database(self, id):
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMusicVideoDetails", "params": {"properties": [%s], "musicvideoid":%s }, "id": 1}' %(self._get_item_details_fields(), id))
-        details = response.get( 'result', {} ).get( 'musicvideodetails', None )
-        if details:
-            details['id'] = details['musicvideoid']
-        return details
     
     def _get_random_items(self):
         items = [item for item in self._items if item['playcount']==0] if self._randomOnlyUnplayed else [item for item in self._items]
@@ -64,11 +54,21 @@ class MusicVideoPlaylist(vpl.VideoPlaylist):
         otherItems = sorted(otherItems, key=lambda x: x['dateadded'], reverse=True)
         items = startedItems + otherItems
         return items[:self._itemLimit]
-        
-    def _get_fech_one_item_directory_source(self, details):
+    
+    def _get_item_details_fields(self):
+        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "artist", "fanart", "thumbnail"'
+   
+    def _get_one_item_details_from_database(self, id):
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMusicVideoDetails", "params": {"properties": [%s], "musicvideoid":%s }, "id": 1}' %(self._get_item_details_fields(), id))
+        details = response.get( 'result', {} ).get( 'musicvideodetails', None )
         if details:
-            filepath = helper.split_path(details['file'])            
-            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"musicvideos"}' %(self.playlistName, filepath[0], filepath[1])
-            playlistbase = 'videodb://musicvideos/titles/?xsp=%s' %urllib.parse.quote(playlistfilter)
-            return playlistbase
-        return None
+            details['id'] = details['musicvideoid']
+        return details
+    
+    def _is_item_in_playlist(self, item):
+        filepath = helper.split_path(item['file'])
+        playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"musicvideos"}' %(self.playlistName, filepath[0], filepath[1])
+        playlistbase = 'videodb://musicvideos/titles/?xsp=%s' %urllib.parse.quote(playlistfilter)
+        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(playlistbase, self.mediaType, self._get_item_details_fields()))
+        return len(response.get("result", {} ).get("files",[])) > 0
+
