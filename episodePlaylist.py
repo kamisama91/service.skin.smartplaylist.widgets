@@ -1,154 +1,84 @@
 import random
-import threading
 import urllib.parse
 import helper
-import videoPlaylist as vpl
+from settings import Settings
+import playlist as pl
 
-class EpisodePlaylist(vpl.VideoPlaylist):
+class EpisodePlaylist(pl.Playlist):
     def __init__(self, alias, path, name, type):
-        vpl.VideoPlaylist.__init__(self, alias, path, name, type, 'episode')
-        self.__ignoreSpecials = False
-        self.__lock = threading.Lock()
-
-    def _read_settings(self, settings):
-        vpl.VideoPlaylist._read_settings(self, settings)
-        if settings:
-            self.__ignoreSpecials = settings.getSetting("ignore_specials") == 'true'
-            
-    def _set_playlist_properties(self):
-        vpl.VideoPlaylist._set_playlist_properties(self)
-        helper.set_property("%s.TvShows" %self._alias, str(self._getTvShowCount()))
+        super().__init__(alias, path, name, type, 'episode')
+    
+    def _set_statistics_properties(self, item):
+        super()._set_statistics_properties(item)
+        helper.set_property("%s.TvShows" %self._alias, str(item.get('totaltvshow', 0)))
     
     def _set_one_item_properties(self, property, item):
-        vpl.VideoPlaylist._set_one_item_properties(self, property, item)
-        if item:
-            helper.set_property("%s.EpisodeNo"    % property, "S%.2dE%.2d" %(float(item.get('season')), float(item.get('episode'))))
-            helper.set_property("%s.TVshowTitle"  % property, item.get('showtitle'))
-            helper.set_property("%s.Art(thumb)"   % property, item['art'].get('thumb',''))
-            helper.set_property("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
+        super()._set_one_item_properties(property, item)
+        helper.set_property("%s.EpisodeNo"    % property, "S%.2dE%.2d" %(float(item.get('season')), float(item.get('episode'))))
+        helper.set_property("%s.TVshowTitle"  % property, item.get('showtitle'))
+        helper.set_property("%s.Art(thumb)"   % property, item['art'].get('thumb',''))
+        helper.set_property("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
    
-    def _clear_playlist_properties(self):
-        vpl.VideoPlaylist._clear_playlist_properties(self)
+    def _clear_statistics_properties(self):
+        super()._clear_statistics_properties()
         for property in ['TvShows']:
             helper.clear_property('%s.%s' %(self._alias, property))
         
     def _clear_one_item_properties(self, property):
-        vpl.VideoPlaylist._clear_one_item_properties(self, property)
+        super()._clear_one_item_properties(property)
         for item in ['EpisodeNo', 'TVshowTitle', 'Art(thumb)', 'Art(fanart)']:
             helper.clear_property('%s.%s' %(property, item)) 
-                
-    def _getTvShowCount(self):
-        showIds = set([item['tvshowid'] for item in self._items])
-        return len(showIds)
+    
+    def _get_statistics(self):
+        tokens = { "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause() }
+        statistics = helper.execute_sql_prepared_select("episode_statistics", tokens)[0]
+        return {
+                "total": statistics.get('total', 0),
+                "watched": statistics.get('watched', 0),
+                "unwatched": statistics.get('unwatched', 0),
+                "totaltvshow": statistics.get('totaltvshow', 0)
+        }
     
     def _get_random_items(self):
-        items = [item for item in self._items if item['season']>0] if self.__ignoreSpecials else [item for item in self._items]
-        items = [item for item in items if item['playcount']==0] if self._randomOnlyUnplayed else [item for item in items]
-        random.shuffle(items)
-        return items[:self._itemLimit]
+        tokens = {
+            "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
+            "#SPECIAL_FILTER#": "> 0" if Settings.get_instance().ignoreSpecials else  ">= 0",
+            "#UNWATCHED_FILTER#": ">= 0" if Settings.get_instance().randomOnlyUnplayed else "= 0",
+            "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
+        }
+        response = helper.execute_sql_prepared_select("episode_random", tokens)
+        return self._read_sql_items(response)
     
     def _get_recent_items(self):
-        items = [item for item in self._items if item['season']>0] if self.__ignoreSpecials else [item for item in self._items]
-        items = [item for item in items if item['playcount']==0] if self._recentOnlyUnplayed else [item for item in items]
-        items = sorted(items, key=lambda x: x['dateadded'], reverse=True)
-        return items[:self._itemLimit]
+        tokens = {
+            "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
+            "#SPECIAL_FILTER#": "> 0" if Settings.get_instance().ignoreSpecials else  ">= 0",
+            "#UNWATCHED_FILTER#": ">= 0" if Settings.get_instance().recentOnlyUnplayed else "= 0",
+            "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
+        }
+        response = helper.execute_sql_prepared_select("episode_recent", tokens)
+        return self._read_sql_items(response)
     
     def _get_suggested_items(self):
-        playedEpisodes = [item for item in self._items if item['playcount']>0]
-        if self.__ignoreSpecials:
-            playedEpisodes = [item for item in playedEpisodes if item['season']>0]
-        playedTvShowIds = set([item['tvshowid'] for item in playedEpisodes])      
-        playedTvShows = []
-        for playedTvShowId in playedTvShowIds:
-            showEpisodes = [item for item in self._items if item['tvshowid']==playedTvShowId]
-            if self.__ignoreSpecials:
-                showEpisodes = [item for item in showEpisodes if item['season']>0]
-            #Relevent order in max(lastpayed in set set, min(date(dateadded) with palycount=0 in set set)), lastplayed 
-            lastPlayed = max([item['lastplayed'] for item in showEpisodes])
-            dateAdded = "0000-00-00 00:00:00"
-            setUnplayedEpisodesDateAdded = [helper.date(item['dateadded']) for item in showEpisodes if item['playcount']==0]
-            if len(setUnplayedEpisodesDateAdded) > 0:
-                dateAdded = min(setUnplayedEpisodesDateAdded)
-            playedTvShows.append({'tvshowid':playedTvShowId, 'relevantupdatedate':max([lastPlayed,dateAdded]), 'lastplayed':lastPlayed})
-        playedTvShows = sorted(playedTvShows, key=lambda x: [x['relevantupdatedate'],x['lastplayed']], reverse=True)       
-        nextEpisodes = []
-        for playedTvShow in playedTvShows:
-            unplayedShowEpisodes = [item for item in self._items if item['tvshowid']==playedTvShow['tvshowid'] and item['playcount']==0]
-            if self.__ignoreSpecials:
-                unplayedShowEpisodes = [item for item in unplayedShowEpisodes if item['season']>0]
-            unplayedShowEpisodes = sorted(unplayedShowEpisodes, key=lambda x: [x['season'],x['episode']], reverse=False)
-            episodes = [item for item in unplayedShowEpisodes if item['season']>0]
-            if len(episodes) > 0:
-                nextEpisodes.append(episodes[0])
-            else:
-                episodes = episodes = [item for item in unplayedShowEpisodes if item['season']==0]
-                if len(episodes) > 0:
-                    nextEpisodes.append(episodes[0])
-        #Then when is a not inprogress show: first not played/started episode from the show with the maximum dateadded from the show
-        otherTvShowIds = set([item['tvshowid'] for item in self._items if item['tvshowid'] not in playedTvShowIds])
-        firstEpisodes = []
-        for otherTvShowId in otherTvShowIds:
-            showEpisodes = [item for item in self._items if item['tvshowid']==otherTvShowId]            
-            if self.__ignoreSpecials:
-                showEpisodes = [item for item in showEpisodes if item['season']>0]
-            showEpisodes = sorted(showEpisodes, key=lambda x: [x['season'],x['episode']], reverse=False)            
-            dateAdded = max([item['dateadded'] for item in showEpisodes])
-            episodes = [item for item in showEpisodes if item['season']>0]
-            if len(episodes) > 0:
-                firstEpisodes.append({'episode':episodes[0], 'dateadded':dateAdded})
-            else:
-                episodes = [item for item in showEpisodes if item['season']==0]
-                if len(episodes) > 0:
-                    firstEpisodes.append({'episode':episodes[0], 'dateadded':dateAdded})
-        firstEpisodes = sorted(firstEpisodes, key=lambda x: x['dateadded'], reverse=True)
-        firstEpisodes = [item['episode'] for item in firstEpisodes]
-        #Mix and limit the result
-        result = nextEpisodes + firstEpisodes  
-        return result[:self._itemLimit]
+        tokens = {
+            "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
+            "#SPECIAL_FILTER#": "> 0" if Settings.get_instance().ignoreSpecials else  ">= 0",
+            "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
+        }
+        response = helper.execute_sql_prepared_select("episode_suggested", tokens)
+        return self._read_sql_items(response)
     
-    def _get_item_details_fields(self):
-        return vpl.VideoPlaylist._get_item_details_fields(self) + ',"dateadded", "art", "tvshowid", "showtitle", "season", "episode"'
-    
-    def _get_one_item_details_from_database(self, id):
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodeDetails", "params": {"properties": [%s], "episodeid":%s }, "id": 1}' %(self._get_item_details_fields(),id))
-        details = response.get( 'result',{} ).get('episodedetails', None )
-        if details:
-            details['id'] = details['episodeid']
-        return details
-    
-    def _fetch_all_items(self):
-        if self.playlistType == 'tvshows':
-            response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(self.playlistPath, self.mediaType, self._get_item_details_fields()))
-            tvshowids = [file['id'] for file in response.get("result", {}).get( "files", []) if file['filetype'] == 'directory' and file.get('id', -1) != -1]
-            fetched = list()
-            threads = []
-            for tvshowid in tvshowids:
-                threads.append(threading.Thread(target=self._fetch_all_items_for_one_tvshow, args=(tvshowid, fetched, )))
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
-            return fetched
-        else:
-            return vpl.VideoPlaylist._fetch_all_items(self)
-    
-    
-    def _fetch_all_items_for_one_tvshow(self, tvshowid, fetched):
-        response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetEpisodes", "params": {"tvshowid": %d, "properties": [%s]}, "id": 1}' %(tvshowid, self._get_item_details_fields()))
-        episodes = response.get('result', {}).get('episodes', [])
-        with self.__lock:
-            for episode in [episode for episode in episodes if episode.get('episodeid', -1) != -1]:
-                episode['id'] = episode['episodeid']
-                fetched.append(episode)
-
-    def _is_item_in_playlist(self, item):
-        if self.playlistType == 'tvshows':
-            response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(self.playlistPath, self.mediaType, self._get_item_details_fields()))
-            files = response.get("result", {}).get("files",[])
-            return len([file for file in files if file['filetype'] == 'directory' and file.get('id', -1) == item['tvshowid']]) > 0
-        else:
-            filepath = helper.split_path(details['file'])
-            playlistfilter = '{"rules":{"and":[{"field":"playlist","operator":"is","value":["%s"]},{"field":"path","operator":"is","value":["%s"]},{"field":"filename","operator":"is","value":["%s"]}]},"type":"episodes"}' %(self.playlistName, filepath[0], filepath[1])
-            playlistbase = 'videodb://tvshows/titles/%s/%s/?xsp=%s' %(details['tvshowid'], details['season'], urllib.parse.quote(playlistfilter))
-            response = helper.execute_json_rpc('{"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "%s", "media": "%s", "properties": [%s]}, "id": 1}' %(playlistbase, self.mediaType, self._get_item_details_fields()))
-            return len(response.get("result",{} ).get("files", [])) > 0
+    def _read_sql_items(self, sqlResponse):
+        result = []
+        for row in sqlResponse:
+            item = {
+                "id": row['id'],
+                "file": row['path'] + row['file'],
+                "title": row['title'],
+                "season": row['season'],
+                "episode": row['episode'],
+                "showtitle": row['tvshowtitle'],
+                "art": { "thumb": row['thumb'], "tvshow.fanart":row['fanart'] },
+            }
+            result.append(item)
+        return result

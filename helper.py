@@ -1,24 +1,21 @@
 import os
 import sys
-import time
-import uuid
 import xbmc
 import xbmcgui
 import xbmcvfs
 import xbmcaddon
-from xml.dom.minidom import parse
-import json as simplejson
+import json
+import xml.dom.minidom as xml
+import sql
 
 WINDOW = xbmcgui.Window(10000)
-# This is a throwaway variable to deal with a python bug
-throwaway = time.strptime('20110101','%Y%m%d')
 
 def log(txt):
-    file = open(xbmcvfs.translatePath(get_addon_path()) + "/notification.log", "a")
+    file = open(xbmcvfs.translatePath(get_addon_path()) + "/notification.log", "a", encoding='utf-8')
     file.write('%s\r' %txt)
     file.close()
     
-def notify(message, duration):
+def notify(message, duration = 2):
     xbmc.executebuiltin('Notification(%s,%s,%d,%s)' %(get_addon_name(), message, 1000*duration, xbmcvfs.translatePath(get_addon_path())+"/icon.png"))
     
 def get_property(property):
@@ -42,55 +39,36 @@ def get_addon_path():
 def get_addon_name():
     return xbmcaddon.Addon().getAddonInfo('name')
     
-def current_timestamp():
-    return time.time()
+def load_json(jsonContent):
+    return json.loads(jsonContent)
     
-def current_time():
-    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_timestamp()))
-    
-def date(datetimeString):
-    datetimeObject = time.strptime(datetimeString, "%Y-%m-%d %H:%M:%S")
-    return time.strftime("%Y-%m-%d 00:00:00", datetimeObject)
-    
-def load_json(json):
-    return simplejson.loads(json)
-
 def load_xml(path):
-    return parse(get_real_path(path))
+    realpath = get_real_path(path)
+    if os.path.exists(realpath):
+        return xml.parse(realpath)
+    else:
+        return None
     
-def save_xml(path, xmlDocument):
-    file_handle = open(get_real_path(path), "w")
-    xmlDocument.writexml(file_handle)
-    file_handle.close()
-    
-def delete_xml(path):
-    if path != '':
-        realPath = get_real_path(path)
-        if os.path.exists(realPath):
-            os.remove(realPath)
-    
-def split_path(path):
-    splitPath = os.path.split(path)
-    tokens = []
-    tokens.append(splitPath[0])
-    tokens.append(splitPath[1])    
-    tokens[0] = tokens[0] + ('/' if '/' in tokens[0] else '\\')
-    tokens[0] = tokens[0].replace('\\', '\\\\')
-    return tokens
-    
-def split_filename(filename):
-    return os.path.splitext(filename)
+def read_addon_file(relativePath):
+    file = open(xbmcvfs.translatePath(get_addon_path()) + "/" + relativePath, "r", encoding='utf-8')
+    content = file.read()
+    file.close()
+    return content
     
 def get_real_path(path):
     return xbmcvfs.translatePath(path)
     
-def execute_json_rpc(request):
-    t1 = current_timestamp()
-    jsonRpcResult = xbmc.executeJSONRPC(request)
-    response = load_json(jsonRpcResult)
-    t2 = current_timestamp()
-    #log("request: %s\rresponse: %s\rduration: %d seconds\r" %(request, response, (t2-t1)))
-    return response
+def get_xbmc_major_version():
+    json = execute_json_rpc('{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }')
+    return json['result']['version']['major']
     
-def get_uuid():
-    return uuid.uuid4().hex
+def execute_json_rpc(request):
+    jsonRpcResult = xbmc.executeJSONRPC(request)
+    return load_json(jsonRpcResult)
+    
+def execute_sql_prepared_select(requestName, tokens):
+    request = read_addon_file("/resources/sql/%s/%s.sql" % (sql.SqlConnexion.get_instance().videoDbType, requestName))
+    for key, value in tokens.items():
+        request = request.replace(key, value)
+    return sql.SqlConnexion.get_instance().execute_sql_select(request)
+    

@@ -1,9 +1,8 @@
-import threading
+import xbmc
 import helper
+from settings import Settings
 import moviePlaylist as mpl
 import episodePlaylist as epl
-import musicvideoPlaylist as mvpl
-import songPlaylist as spl
 
 MAX_PLAYLIST = 15
 
@@ -16,90 +15,62 @@ class PlaylistCollection():
         playlistType = ''
         if playlistPath != '':
             playlistXml = helper.load_xml(playlistPath)
-            playlistType = playlistXml.getElementsByTagName('smartplaylist')[0].attributes.item(0).value
+            playlistType = playlistXml.getElementsByTagName('smartplaylist')[0].attributes['type'].value
             playlistName = playlistXml.getElementsByTagName('name')[0].firstChild.nodeValue
         return playlistName, playlistType
-
-    def __register(self, alias, path, settings):
+    
+    def __register(self, alias, path):
         playlist = None
         playlistName, playlistType = self.__get_playlist_details(path)
         if playlistType in ['episodes', 'tvshows']:
             playlist = epl.EpisodePlaylist(alias, path, playlistName, playlistType)
         elif playlistType == 'movies':
             playlist = mpl.MoviePlaylist(alias, path, playlistName, playlistType)
-        elif playlistType == 'musicvideos':
-            playlist = mvpl.MusicVideoPlaylist(alias, path, playlistName, playlistType)
-        elif playlistType in ['songs', 'albums', 'artists']:
-            playlist = spl.SongPlaylist(alias, path, playlistName, playlistType)
         if playlist:
             self.__playlists.append(playlist)
-            playlist.reload_paylist_content()
-            playlist.update_settings(alias, settings)
     
-    def update(self, settings):
-        t1 = helper.current_timestamp()
-        threads = []
-        configPlaylists = []
-        count = 1
-        while count <= MAX_PLAYLIST:
-            property = 'service.skin.smartplaylist.widgets.SmartPlaylist%s' %count
-            if helper.get_property(property) != '':
-                configPlaylists.append({'alias': property, 'path': helper.get_property(property)})
-            count += 1
-        newPlaylistPath = [playlist['path'] for playlist in configPlaylists]
-        for playlist in [playlist for playlist in self.__playlists if playlist.playlistPath not in newPlaylistPath]:
-            playlist.clean()
+    def on_settings_updated(self):
+        for playlist in self.__playlists:
+            playlist.clean_items()
             self.__playlists.remove(playlist)
-        for playlist in [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath in [playlist['path'] for playlist in configPlaylists]]:
-            playlist.clean()
-        for playlist in configPlaylists:
-            existingPlaylists = [existingPlaylist for existingPlaylist in self.__playlists if existingPlaylist.playlistPath == playlist['path']]
-            if len(existingPlaylists) > 0:
-                for existingPlaylist in existingPlaylists:
-                    existingPlaylist.update_settings(playlist['alias'], settings)
-            else:
-                threads.append(threading.Thread(target=self.__register, args=(playlist['alias'], playlist['path'], settings, )))
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-        t2 = helper.current_timestamp()
-        #helper.notify("%s: %d seconds" %("Loaded", t2-t1), 2)
+        for count in range(1, MAX_PLAYLIST+1):
+            alias = 'service.skin.smartplaylist.widgets.SmartPlaylist%s' %count
+            path = helper.get_property(alias)
+            if path != '':
+                self.__register(alias, path)
+        self.__update_all_playlists(['Suggested', 'Recent', 'Random'])
     
-    def update_all_playlists(self, modes):
-        for playlist in [playlist for playlist in self.__playlists]:
-            playlist.update(modes)
-       
-    def reload_paylist_content(self, type):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.reload_paylist_content()
+    def on_timer_tick(self):
+        if Settings.get_instance().randomUpdateOnTimer:
+            self.__update_all_playlists(['Random'])
     
-    def contains_item(self, type, id):
-        itemFound = False
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            itemFound = itemFound or playlist.contains_item(id)
-        return itemFound
-            
-    def add_item(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.add_item(id)
-        
-    def remove_item(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.remove_item(id)
-                
-    def set_watched(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.set_watched(id)
-            
-    def set_unwatched(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.set_unwatched(id)
+    def on_homescreen(self):
+        if Settings.get_instance().randomUpdateOnHomeScreen:
+            self.__update_all_playlists(['Random'])
     
-    def start_playing(self, type, id):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.start_playing(id)
+    def on_library_updated(self, type, isDelete = False):
+        self.__update_typed_playlists(type, ['Suggested', 'Recent', 'Random'] if (Settings.get_instance().randomUpdateOnLibraryUpdated or isDelete) else ['Suggested', 'Recent'])
     
-    def stop_playing(self, type, id, isEnded):
-        for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
-            playlist.stop_playing(id, isEnded)
+    def on_item_played(self, id, type):
+        #Save status of started item
+        self.__lastItemStatus = helper.execute_sql_prepared_select("%s_status" %type, { "#ID#": str(id) })[0]
+    
+    def on_item_stopped(self, id, type):
+        #Wait status to be updated for stopped item
+        itemUpdatedInDatabase = False
+        while not itemUpdatedInDatabase:
+            status = helper.execute_sql_prepared_select("%s_status" %type, { "#ID#": str(id) })[0]
+            itemUpdatedInDatabase = (status['lastplayed'] != self.__lastItemStatus['lastplayed'])
+            xbmc.sleep(100)
+        self.__update_typed_playlists(type, ['Suggested', 'Recent', 'Random'] if Settings.get_instance().randomUpdateOnLibraryUpdated else ['Suggested', 'Recent'])
+    
+    def __update_all_playlists(self, modes):
+        for mode in [mode for mode in modes if mode in Settings.get_instance().get_enabled_modes()]:
+            for playlist in [playlist for playlist in self.__playlists]:
+                playlist.update_items(mode)
+    
+    def __update_typed_playlists(self, type, modes):
+        for mode in [mode for mode in modes if mode in Settings.get_instance().get_enabled_modes()]:
+            for playlist in [playlist for playlist in self.__playlists if playlist.itemType == type]:
+                playlist.update_items(mode)
+

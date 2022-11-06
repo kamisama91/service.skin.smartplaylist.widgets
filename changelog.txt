@@ -1,3 +1,7 @@
+v0.6.0
+- Direct SQL access for better performance (mysql and sqlite supported)
+- Remove music and musicvideo support
+
 v0.5.1
 - Multithreading for loading playlist content
 
