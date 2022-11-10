@@ -66,9 +66,10 @@ def execute_json_rpc(request):
     jsonRpcResult = xbmc.executeJSONRPC(request)
     return load_json(jsonRpcResult)
     
-def execute_sql_prepared_select(requestName, tokens):
-    request = read_addon_file("/resources/sql/%s/%s.sql" % (sql.SqlConnexion.get_instance().videoDbType, requestName))
+def execute_sql_prepared_select(database, requestName, tokens):
+    connexion = sql.SqlConnexion.get_instance()
+    dbType = connexion.videoDbType if database=="video" else connexion.musicDbType
+    request = read_addon_file("/resources/sql/%s/%s.sql" % (dbType, requestName))
     for key, value in tokens.items():
         request = request.replace(key, value)
-    return sql.SqlConnexion.get_instance().execute_sql_select(request)
-    
+    return connexion.execute_sql_select(database, request)

@@ -1,3 +1,6 @@
+v0.6.2
+- Fix database version for kodi v20
+
 v0.6.1
 - Bug fixes in sql queries
 

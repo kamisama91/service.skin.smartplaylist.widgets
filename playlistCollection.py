@@ -52,14 +52,16 @@ class PlaylistCollection():
         self.__update_typed_playlists(type, ['Suggested', 'Recent', 'Random'] if (Settings.get_instance().randomUpdateOnLibraryUpdated or isDelete) else ['Suggested', 'Recent'])
     
     def on_item_played(self, id, type):
+        database = "video" if type in ["movie", "episode", "musicvideo"] else "music"
         #Save status of started item
-        self.__lastItemStatus = helper.execute_sql_prepared_select("%s_status" %type, { "#ID#": str(id) })[0]
+        self.__lastItemStatus = helper.execute_sql_prepared_select(database, "%s_status" %type, { "#ID#": str(id) })[0]
     
     def on_item_stopped(self, id, type):
+        database = "video" if type in ["movie", "episode", "musicvideo"] else "music"
         #Wait status to be updated for stopped item
         itemUpdatedInDatabase = False
         while not itemUpdatedInDatabase:
-            status = helper.execute_sql_prepared_select("%s_status" %type, { "#ID#": str(id) })[0]
+            status = helper.execute_sql_prepared_select(database, "%s_status" %type, { "#ID#": str(id) })[0]
             itemUpdatedInDatabase = (status['lastplayed'] != self.__lastItemStatus['lastplayed'])
             xbmc.sleep(100)
         self.__update_typed_playlists(type, ['Suggested', 'Recent', 'Random'] if Settings.get_instance().randomUpdateOnLibraryUpdated else ['Suggested', 'Recent'])

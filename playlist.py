@@ -6,8 +6,8 @@ class Playlist():
         self._alias = alias
         self.playlistPath = path
         self.playlistName = name
-        self.playlistType = playlistType        #movies/episodes/tvshows
-        self.itemType = itemType                #movie/episode
+        self.playlistType = playlistType        #movies/episodes/tvshows/musicvideos/songs/albums/artists/mixed
+        self.itemType = itemType                #movie/episode/musicvideo/song
 
     def update_items(self, mode):
         self.__set_playlist_properties()

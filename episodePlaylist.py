@@ -31,7 +31,7 @@ class EpisodePlaylist(pl.Playlist):
     
     def _get_statistics(self):
         tokens = { "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause() }
-        statistics = helper.execute_sql_prepared_select("episode_statistics", tokens)[0]
+        statistics = helper.execute_sql_prepared_select("video", "episode_statistics", tokens)[0]
         return {
                 "total": statistics.get('total', 0),
                 "watched": statistics.get('watched', 0),
@@ -46,7 +46,7 @@ class EpisodePlaylist(pl.Playlist):
             "#UNWATCHED_FILTER#": "= 0" if Settings.get_instance().randomOnlyUnplayed else ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
-        response = helper.execute_sql_prepared_select("episode_random", tokens)
+        response = helper.execute_sql_prepared_select("video", "episode_random", tokens)
         return self._read_sql_items(response)
     
     def _get_recent_items(self):
@@ -56,7 +56,7 @@ class EpisodePlaylist(pl.Playlist):
             "#UNWATCHED_FILTER#": "= 0" if Settings.get_instance().recentOnlyUnplayed else ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
-        response = helper.execute_sql_prepared_select("episode_recent", tokens)
+        response = helper.execute_sql_prepared_select("video", "episode_recent", tokens)
         return self._read_sql_items(response)
     
     def _get_suggested_items(self):
@@ -65,7 +65,7 @@ class EpisodePlaylist(pl.Playlist):
             "#SPECIAL_FILTER#": "> 0" if Settings.get_instance().ignoreSpecials else  ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
-        response = helper.execute_sql_prepared_select("episode_suggested", tokens)
+        response = helper.execute_sql_prepared_select("video", "episode_suggested", tokens)
         return self._read_sql_items(response)
     
     def _read_sql_items(self, sqlResponse):
