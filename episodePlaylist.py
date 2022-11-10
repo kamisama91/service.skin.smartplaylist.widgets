@@ -15,9 +15,9 @@ class EpisodePlaylist(pl.Playlist):
     def _set_one_item_properties(self, property, item):
         super()._set_one_item_properties(property, item)
         helper.set_property("%s.EpisodeNo"    % property, "S%.2dE%.2d" %(float(item.get('season')), float(item.get('episode'))))
-        helper.set_property("%s.TVshowTitle"  % property, item.get('showtitle'))
-        helper.set_property("%s.Art(thumb)"   % property, item['art'].get('thumb',''))
-        helper.set_property("%s.Art(fanart)"  % property, item['art'].get('tvshow.fanart',''))
+        helper.set_property("%s.TVshowTitle"  % property, str(item.get('showtitle')))
+        helper.set_property("%s.Art(thumb)"   % property, str(item['art'].get('thumb','')))
+        helper.set_property("%s.Art(fanart)"  % property, str(item['art'].get('tvshow.fanart','')))
    
     def _clear_statistics_properties(self):
         super()._clear_statistics_properties()
@@ -43,7 +43,7 @@ class EpisodePlaylist(pl.Playlist):
         tokens = {
             "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
             "#SPECIAL_FILTER#": "> 0" if Settings.get_instance().ignoreSpecials else  ">= 0",
-            "#UNWATCHED_FILTER#": ">= 0" if Settings.get_instance().randomOnlyUnplayed else "= 0",
+            "#UNWATCHED_FILTER#": "= 0" if Settings.get_instance().randomOnlyUnplayed else ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
         response = helper.execute_sql_prepared_select("episode_random", tokens)
@@ -53,7 +53,7 @@ class EpisodePlaylist(pl.Playlist):
         tokens = {
             "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
             "#SPECIAL_FILTER#": "> 0" if Settings.get_instance().ignoreSpecials else  ">= 0",
-            "#UNWATCHED_FILTER#": ">= 0" if Settings.get_instance().recentOnlyUnplayed else "= 0",
+            "#UNWATCHED_FILTER#": "= 0" if Settings.get_instance().recentOnlyUnplayed else ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
         response = helper.execute_sql_prepared_select("episode_recent", tokens)

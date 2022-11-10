@@ -30,8 +30,8 @@ class Playlist():
                 self.__clear_all_items_Properties(mode)
     
     def __set_playlist_properties(self):
-        helper.set_property("%s.Name"       %self._alias, self.playlistName)
-        helper.set_property("%s.Type"       %self._alias, self.itemType)
+        helper.set_property("%s.Name"       %self._alias, str(self.playlistName))
+        helper.set_property("%s.Type"       %self._alias, str(self.itemType))
     
     def __clear_playlist_properties(self):
         for property in ['Name', 'Type']:
@@ -55,8 +55,8 @@ class Playlist():
     
     def _set_one_item_properties(self, property, item):
         helper.set_property("%s.DBID"         % property, str(item.get('id')))
-        helper.set_property("%s.File"         % property, item.get('file',''))
-        helper.set_property("%s.Title"        % property, item.get('title'))
+        helper.set_property("%s.File"         % property, str(item.get('file')))
+        helper.set_property("%s.Title"        % property, str(item.get('title')))
     
     def __clear_all_items_Properties(self, mode):
         self.__clear_all_items_Properties_from_position(mode, 1)

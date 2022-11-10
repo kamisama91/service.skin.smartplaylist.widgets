@@ -14,9 +14,9 @@ class MoviePlaylist(pl.Playlist):
         
     def _set_one_item_properties(self, property, item):
         super()._set_one_item_properties(property, item)
-        helper.set_property("%s.SetTitle"  % property, item.get('set'))
-        helper.set_property("%s.Art(poster)"  % property, item['art'].get('poster',''))
-        helper.set_property("%s.Art(fanart)"  % property, item['art'].get('fanart',''))
+        helper.set_property("%s.SetTitle"  % property, str(item.get('set')))
+        helper.set_property("%s.Art(poster)"  % property, str(item['art'].get('poster','')))
+        helper.set_property("%s.Art(fanart)"  % property, str(item['art'].get('fanart','')))
 
     def _clear_statistics_properties(self):
         super()._clear_statistics_properties()
@@ -41,7 +41,7 @@ class MoviePlaylist(pl.Playlist):
     def _get_random_items(self):
         tokens = {
             "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
-            "#UNWATCHED_FILTER#": ">= 0" if Settings.get_instance().randomOnlyUnplayed else "= 0",
+            "#UNWATCHED_FILTER#": "= 0" if Settings.get_instance().randomOnlyUnplayed else ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
         response = helper.execute_sql_prepared_select("movie_random", tokens)
@@ -50,7 +50,7 @@ class MoviePlaylist(pl.Playlist):
     def _get_recent_items(self):
         tokens = {
             "#PLAYLIST_FILTER#": super()._get_playlist_sql_where_clause(),
-            "#UNWATCHED_FILTER#": ">= 0" if Settings.get_instance().recentOnlyUnplayed else "= 0",
+            "#UNWATCHED_FILTER#": "= 0" if Settings.get_instance().recentOnlyUnplayed else ">= 0",
             "#ITEM_NUMBER#": str(Settings.get_instance().itemLimit),
         }
         response = helper.execute_sql_prepared_select("movie_recent", tokens)
