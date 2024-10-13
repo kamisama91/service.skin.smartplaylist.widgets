@@ -1,3 +1,6 @@
+v0.6.3
+- Fix database version for kodi v21
+
 v0.6.2
 - Fix database version for kodi v20
 

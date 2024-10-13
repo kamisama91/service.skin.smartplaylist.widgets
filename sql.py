@@ -33,7 +33,8 @@ class SqlConnexion:
             elif xbmcMajorVersion == 18: return 116
             elif xbmcMajorVersion == 19: return 119
             elif xbmcMajorVersion == 20: return 121
-            else: return 121
+            elif xbmcMajorVersion == 21: return 131
+            else: return 132
         elif database == "music":
             if xbmcMajorVersion < 10: return 0
             elif xbmcMajorVersion == 10: return 7
@@ -47,7 +48,8 @@ class SqlConnexion:
             elif xbmcMajorVersion == 18: return 72
             elif xbmcMajorVersion == 19: return 82
             elif xbmcMajorVersion == 20: return 82
-            else: return 82
+            elif xbmcMajorVersion == 21: return 83
+            else: return 83
         else: return 0
     
     def __init__(self):
